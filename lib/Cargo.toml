@@ -13,3 +13,4 @@ name = "pomododragon"
 path = "src/lib.rs"
 
 [dependencies]
+derive_builder = "0.10.2"
