@@ -3,7 +3,7 @@ pub trait Task: ToString + Clone {
     fn is_completed(&self) -> bool;
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub enum TaskKind {
     Simple(SimpleTask),
 }
@@ -30,10 +30,19 @@ impl Task for TaskKind {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct SimpleTask {
     completed: bool,
     description: String,
+}
+
+impl SimpleTask {
+    pub fn new(description: String) -> Self {
+        Self {
+            description,
+            completed: false,
+        }
+    }
 }
 
 impl ToString for SimpleTask {
@@ -49,5 +58,19 @@ impl Task for SimpleTask {
 
     fn is_completed(&self) -> bool {
         self.completed
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn it_should_complete() {
+        let mut task = SimpleTask::new("Tets".into());
+        assert!(!task.is_completed());
+
+        task.complete();
+        assert!(task.is_completed());
     }
 }

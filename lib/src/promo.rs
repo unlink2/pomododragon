@@ -1,6 +1,8 @@
 use crate::{OutputSystem, Task, Timer};
 use derive_builder::*;
 
+/// Promo is a simple state machine
+/// with a timer and an output interface
 pub trait Promo<TTask, TTimer>
 where
     TTask: Task,
@@ -47,7 +49,7 @@ impl Default for PromoState {
 /// with a timer
 #[derive(Builder, Debug)]
 #[builder(setter(into))]
-pub struct BasicPromo<TTask, TTimer>
+pub struct SimplePromo<TTask, TTimer>
 where
     TTask: Task,
     TTimer: Timer,
@@ -65,7 +67,7 @@ where
     prev_state: PromoState,
 }
 
-impl<TTask, TTimer> Default for BasicPromo<TTask, TTimer>
+impl<TTask, TTimer> Default for SimplePromo<TTask, TTimer>
 where
     TTask: Task,
     TTimer: Timer,
@@ -80,7 +82,7 @@ where
     }
 }
 
-impl<TTask, TTimer> BasicPromo<TTask, TTimer>
+impl<TTask, TTimer> SimplePromo<TTask, TTimer>
 where
     TTask: Task,
     TTimer: Timer,
@@ -164,7 +166,7 @@ where
     }
 }
 
-impl<TTask, TTimer> Promo<TTask, TTimer> for BasicPromo<TTask, TTimer>
+impl<TTask, TTimer> Promo<TTask, TTimer> for SimplePromo<TTask, TTimer>
 where
     TTask: Task,
     TTimer: Timer,

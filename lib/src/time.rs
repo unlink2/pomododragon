@@ -54,12 +54,13 @@ pub trait Timer {
 
     fn percentage(&self) -> f64 {
         match self.elapsed() {
-            Some(elapsed) => elapsed.as_secs() as f64 / self.goal().as_secs() as f64,
+            Some(elapsed) => elapsed.as_secs_f64() / self.goal().as_secs_f64(),
             None => 0.0,
         }
     }
 }
 
+/// Timer based on simple instanct and duration
 pub struct InstantTimer {
     start: Option<Instant>,
     goal: Duration,
@@ -81,13 +82,51 @@ impl Timer for InstantTimer {
     }
 
     fn elapsed(&self) -> Option<Duration> {
-        match self.start {
-            Some(start) => Some(start.elapsed()),
-            None => None,
-        }
+        self.start.map(|start| start.elapsed())
     }
 
     fn goal(&self) -> Duration {
         self.goal
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // TODO is it really a good idea to test this
+    // with sleeps?
+    #[test]
+    fn it_should_complete() {
+        let mut timer = InstantTimer::new(Duration::from_millis(100));
+        assert!(!timer.is_completed());
+        assert_eq!(timer.elapsed(), None);
+        assert!(!timer.has_started());
+
+        timer.start();
+        assert!(timer.has_started());
+        assert_ne!(timer.elapsed(), None);
+
+        std::thread::sleep(Duration::from_millis(101));
+        assert!(timer.is_completed());
+    }
+
+    #[test]
+    fn it_should_output_percentage() {
+        let mut timer = InstantTimer::new(Duration::from_millis(100));
+        assert_eq!(timer.percentage(), 0.0);
+        timer.start();
+
+        // we estimate the percentage since it is unclear how long sleep
+        // actually takes!
+        // This should *usually* not fail
+        assert!(timer.percentage() > 0.0 && timer.percentage() < 0.001);
+
+        std::thread::sleep(Duration::from_millis(40));
+        assert!(timer.percentage() > 0.40 && timer.percentage() < 0.42);
+        std::thread::sleep(Duration::from_millis(40));
+        assert!(timer.percentage() > 0.80 && timer.percentage() < 0.82);
+        std::thread::sleep(Duration::from_millis(20));
+        assert!(timer.percentage() > 1.00 && timer.percentage() < 1.02);
     }
 }
