@@ -27,6 +27,11 @@ pub trait Timer {
     /// start the timer
     fn start(&mut self);
 
+    /// reset is usually the same as start
+    fn reset(&mut self) {
+        self.start();
+    }
+
     /// returns the seconds
     /// that passed since
     /// the timer started
@@ -36,7 +41,7 @@ pub trait Timer {
     fn goal(&self) -> Duration;
 
     /// goal <= seconds
-    fn is_over(&self) -> bool {
+    fn is_completed(&self) -> bool {
         match self.elapsed() {
             Some(elapsed) => self.goal() <= elapsed,
             None => false,

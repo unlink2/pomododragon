@@ -1,8 +1,9 @@
-pub trait Task: ToString {
+pub trait Task: ToString + Clone {
     fn complete(&mut self);
     fn is_completed(&self) -> bool;
 }
 
+#[derive(Clone)]
 pub enum TaskKind {
     Simple(SimpleTask),
 }
@@ -29,6 +30,7 @@ impl Task for TaskKind {
     }
 }
 
+#[derive(Clone)]
 pub struct SimpleTask {
     completed: bool,
     description: String,
