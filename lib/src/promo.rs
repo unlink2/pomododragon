@@ -54,16 +54,26 @@ where
     TTask: Task,
     TTimer: Timer,
 {
+    #[builder(default)]
     tasks: Vec<TTask>,
+    #[builder(default = "TTimer::default_break_timer()")]
     break_timer: TTimer, // short break
-    work_timer: TTimer,  // work
-    rest_timer: TTimer,  // long break,
+    #[builder(default = "TTimer::default_work_timer()")]
+    work_timer: TTimer, // work
+    #[builder(default = "TTimer::default_rest_timer()")]
+    rest_timer: TTimer, // long break,
 
     // cycle counts
+    #[builder(default = "0")]
     current_cycles: usize,
+    #[builder(default = "4")]
     cycles_until_rest: usize,
+    #[builder(default = "8")]
     total_cycles: usize,
+
+    #[builder(default = "PromoState::default()")]
     state: PromoState, // internal state
+    #[builder(default = "PromoState::default()")]
     prev_state: PromoState,
 }
 
@@ -215,8 +225,24 @@ where
 
 #[cfg(test)]
 mod tests {
+    use std::time::Duration;
+
+    use crate::{InstantTimer, SimpleTask};
+
     use super::*;
 
     #[test]
-    fn it_should() {}
+    fn it_should_update_states_in_order() {
+        let promo = SimplePromoBuilder::<SimpleTask, InstantTimer>::default()
+            .break_timer(InstantTimer::new(Duration::from_millis(100)))
+            .work_timer(InstantTimer::new(Duration::from_millis(200)))
+            .rest_timer(InstantTimer::new(Duration::from_millis(250)))
+            .tasks(vec![
+                SimpleTask::new("Task1".into()),
+                SimpleTask::new("Task2".into()),
+                SimpleTask::new("Task3".into()),
+            ])
+            .build()
+            .unwrap();
+    }
 }

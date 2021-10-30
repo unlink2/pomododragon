@@ -1,6 +1,6 @@
 use std::time::{Duration, Instant};
 
-pub trait Timer {
+pub trait Timer: Clone {
     fn from_goal(goal: Duration) -> Self;
 
     fn default_work_timer() -> Self
@@ -43,7 +43,7 @@ pub trait Timer {
     /// goal <= seconds
     fn is_completed(&self) -> bool {
         match self.elapsed() {
-            Some(elapsed) => self.goal() <= elapsed,
+            Some(elapsed) => self.goal() <= elapsed && !self.is_paused(),
             None => false,
         }
     }
@@ -58,17 +58,31 @@ pub trait Timer {
             None => 0.0,
         }
     }
+
+    fn is_paused(&self) -> bool;
+    fn pause(&mut self);
+    fn resume(&mut self);
 }
 
 /// Timer based on simple instanct and duration
+#[derive(Clone)]
 pub struct InstantTimer {
     start: Option<Instant>,
+    paused: bool,
+    paused_instant: Option<Instant>,
+    current_goal: Duration,
     goal: Duration,
 }
 
 impl InstantTimer {
     pub fn new(goal: Duration) -> Self {
-        Self { start: None, goal }
+        Self {
+            start: None,
+            goal,
+            paused: false,
+            paused_instant: None,
+            current_goal: goal,
+        }
     }
 }
 
@@ -78,6 +92,7 @@ impl Timer for InstantTimer {
     }
 
     fn start(&mut self) {
+        self.current_goal = self.goal;
         self.start = Some(Instant::now())
     }
 
@@ -86,7 +101,27 @@ impl Timer for InstantTimer {
     }
 
     fn goal(&self) -> Duration {
-        self.goal
+        self.current_goal
+    }
+
+    fn is_paused(&self) -> bool {
+        self.paused
+    }
+
+    // TODO allow pausing and unpausing
+    fn pause(&mut self) {
+        if !self.is_paused() {
+            self.paused_instant = Some(Instant::now());
+            self.paused = true;
+        }
+    }
+
+    fn resume(&mut self) {
+        if let Some(pause_instant) = self.paused_instant {
+            self.current_goal += pause_instant.elapsed();
+            self.paused = false;
+            self.paused_instant = None;
+        }
     }
 }
 
@@ -128,5 +163,24 @@ mod tests {
         assert!(timer.percentage() > 0.80 && timer.percentage() < 0.82);
         std::thread::sleep(Duration::from_millis(20));
         assert!(timer.percentage() > 1.00 && timer.percentage() < 1.02);
+    }
+
+    #[test]
+    fn it_should_pause() {
+        let mut timer = InstantTimer::new(Duration::from_millis(100));
+        timer.start();
+        assert!(!timer.is_paused());
+        assert!(timer.goal().as_millis() == 100);
+        timer.pause();
+
+        std::thread::sleep(Duration::from_millis(150));
+        assert!(!timer.is_completed());
+        assert!(timer.is_paused());
+        timer.resume();
+
+        assert!(timer.goal().as_millis() >= 250);
+        std::thread::sleep(Duration::from_millis(150));
+        assert!(timer.is_completed());
+        assert!(!timer.is_paused());
     }
 }
