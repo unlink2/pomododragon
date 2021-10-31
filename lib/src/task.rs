@@ -30,7 +30,7 @@ impl Task for TaskKind {
     }
 }
 
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq, Debug)]
 pub struct SimpleTask {
     completed: bool,
     description: String,
