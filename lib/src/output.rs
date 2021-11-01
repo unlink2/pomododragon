@@ -1,24 +1,26 @@
-use crate::{Promo, PromoState, Task};
+use crate::{PromoState, Task};
 
-pub struct PromoTransition {
+#[derive(PartialEq, Eq, Debug)]
+pub struct Transition {
     pub from: PromoState,
     pub to: PromoState,
 }
 
-impl PromoTransition {
+impl Transition {
     pub fn new(from: PromoState, to: PromoState) -> Self {
         Self { from, to }
     }
 }
 
-pub struct PromoTaskCompleted<TTask>
+#[derive(PartialEq, Eq, Debug)]
+pub struct TaskCompleted<TTask>
 where
     TTask: Task,
 {
     pub task: TTask,
 }
 
-impl<TTask> PromoTaskCompleted<TTask>
+impl<TTask> TaskCompleted<TTask>
 where
     TTask: Task,
 {
@@ -27,10 +29,11 @@ where
     }
 }
 
+#[derive(PartialEq, Eq, Debug)]
 pub enum PromoMessage<TTask>
 where
     TTask: Task,
 {
-    Transition(PromoTransition),
-    TaskCompleted(PromoTaskCompleted<TTask>),
+    Transition(Transition),
+    TaskCompleted(TaskCompleted<TTask>),
 }
