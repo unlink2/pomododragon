@@ -1,3 +1,5 @@
+use std::marker::PhantomData;
+
 use crate::{PromoState, Task};
 
 #[derive(PartialEq, Eq, Debug)]
@@ -13,27 +15,31 @@ impl Transition {
 }
 
 #[derive(PartialEq, Eq, Debug)]
-pub struct TaskCompleted<TTask>
+pub struct TaskCompleted<TTask, TError>
 where
-    TTask: Task,
+    TTask: Task<TError>,
 {
     pub task: TTask,
+    phantom_error: PhantomData<TError>,
 }
 
-impl<TTask> TaskCompleted<TTask>
+impl<TTask, TError> TaskCompleted<TTask, TError>
 where
-    TTask: Task,
+    TTask: Task<TError>,
 {
     pub fn new(task: TTask) -> Self {
-        Self { task }
+        Self {
+            task,
+            phantom_error: PhantomData::default(),
+        }
     }
 }
 
 #[derive(PartialEq, Eq, Debug)]
-pub enum PromoMessage<TTask>
+pub enum PromoMessage<TTask, TError>
 where
-    TTask: Task,
+    TTask: Task<TError>,
 {
     Transition(Transition),
-    TaskCompleted(TaskCompleted<TTask>),
+    TaskCompleted(TaskCompleted<TTask, TError>),
 }

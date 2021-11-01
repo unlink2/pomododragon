@@ -1,6 +1,6 @@
 use std::time::{Duration, Instant};
 
-pub trait Timer: Clone {
+pub trait Timer<TError>: Clone {
     fn from_goal(goal: Duration) -> Self;
 
     fn default_work_timer() -> Self
@@ -25,11 +25,11 @@ pub trait Timer: Clone {
     }
 
     /// start the timer
-    fn start(&mut self);
+    fn start(&mut self) -> Result<(), TError>;
 
     /// reset is usually the same as start
-    fn reset(&mut self) {
-        self.start();
+    fn reset(&mut self) -> Result<(), TError> {
+        self.start()
     }
 
     /// returns the seconds
@@ -86,14 +86,15 @@ impl InstantTimer {
     }
 }
 
-impl Timer for InstantTimer {
+impl Timer<()> for InstantTimer {
     fn from_goal(goal: Duration) -> Self {
         Self::new(goal)
     }
 
-    fn start(&mut self) {
+    fn start(&mut self) -> Result<(), ()> {
         self.current_goal = self.goal;
-        self.start = Some(Instant::now())
+        self.start = Some(Instant::now());
+        Ok(())
     }
 
     fn elapsed(&self) -> Option<Duration> {
@@ -138,7 +139,7 @@ mod tests {
         assert_eq!(timer.elapsed(), None);
         assert!(!timer.has_started());
 
-        timer.start();
+        timer.start().unwrap();
         assert!(timer.has_started());
         assert_ne!(timer.elapsed(), None);
 
@@ -150,7 +151,7 @@ mod tests {
     fn it_should_output_percentage() {
         let mut timer = InstantTimer::new(Duration::from_millis(100));
         assert_eq!(timer.percentage(), 0.0);
-        timer.start();
+        timer.start().unwrap();
 
         // we estimate the percentage since it is unclear how long sleep
         // actually takes!
@@ -168,7 +169,7 @@ mod tests {
     #[test]
     fn it_should_pause() {
         let mut timer = InstantTimer::new(Duration::from_millis(100));
-        timer.start();
+        timer.start().unwrap();
         assert!(!timer.is_paused());
         assert!(timer.goal().as_millis() == 100);
         timer.pause();

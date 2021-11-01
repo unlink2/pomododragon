@@ -3,14 +3,14 @@ use derive_builder::*;
 
 /// Promo is a simple state machine
 /// with a timer and an output interface
-pub trait Promo<TTask, TTimer>
+pub trait Promo<TTask, TTimer, TError>
 where
-    TTask: Task,
-    TTimer: Timer,
+    TTask: Task<TError>,
+    TTimer: Timer<TError>,
 {
     /// shoudl call output.update
     /// and output.task_compelted if a task was completed!
-    fn update(&mut self) -> Vec<PromoMessage<TTask>>;
+    fn update(&mut self) -> Result<Vec<PromoMessage<TTask, TError>>, TError>;
 
     fn state(&self) -> PromoState;
 
@@ -21,9 +21,9 @@ where
     fn timer(&self) -> Option<&TTimer>;
 
     /// Should call output.state_changed!
-    fn set_state(&mut self, state: PromoState) -> PromoMessage<TTask>;
+    fn set_state(&mut self, state: PromoState) -> Result<PromoMessage<TTask, TError>, TError>;
 
-    fn toggle_pause(&mut self) -> PromoMessage<TTask>;
+    fn toggle_pause(&mut self) -> Result<PromoMessage<TTask, TError>, TError>;
 
     fn is_paused(&self) -> bool {
         self.state() == PromoState::Paused
@@ -57,8 +57,8 @@ impl Default for PromoState {
 #[builder(setter(into))]
 pub struct SimplePromo<TTask, TTimer>
 where
-    TTask: Task,
-    TTimer: Timer,
+    TTask: Task<()>,
+    TTimer: Timer<()>,
 {
     #[builder(default)]
     tasks: Vec<TTask>,
@@ -85,8 +85,8 @@ where
 
 impl<TTask, TTimer> Default for SimplePromo<TTask, TTimer>
 where
-    TTask: Task,
-    TTimer: Timer,
+    TTask: Task<()>,
+    TTimer: Timer<()>,
 {
     fn default() -> Self {
         Self::new(
@@ -100,8 +100,8 @@ where
 
 impl<TTask, TTimer> SimplePromo<TTask, TTimer>
 where
-    TTask: Task,
-    TTimer: Timer,
+    TTask: Task<()>,
+    TTimer: Timer<()>,
 {
     pub fn new(
         tasks: Vec<TTask>,
@@ -122,7 +122,7 @@ where
         }
     }
 
-    fn update_working(&mut self) -> Vec<PromoMessage<TTask>> {
+    fn update_working(&mut self) -> Result<Vec<PromoMessage<TTask, ()>>, ()> {
         let mut msgs = vec![];
         // tick the timer
         if self.work_timer.is_completed() {
@@ -130,74 +130,78 @@ where
 
             // remove first task and make it completed!
             if !self.tasks.is_empty() {
-                let comp = self.tasks.remove(0);
+                let mut comp = self.tasks.remove(0);
+                comp.complete()?;
                 msgs.push(PromoMessage::TaskCompleted(TaskCompleted::new(comp)));
             }
 
             // either rest or break
             if self.current_cycles == self.total_cycles {
                 // DONE!
-                msgs.push(self.set_state(PromoState::Completed));
+                msgs.push(self.set_state(PromoState::Completed)?);
             } else if self.current_cycles % self.cycles_until_rest == 0 {
-                msgs.push(self.set_state(PromoState::Resting));
-                self.rest_timer.reset();
+                msgs.push(self.set_state(PromoState::Resting)?);
+                self.rest_timer.reset()?;
             } else {
-                msgs.push(self.set_state(PromoState::Break));
-                self.break_timer.reset();
+                msgs.push(self.set_state(PromoState::Break)?);
+                self.break_timer.reset()?;
             }
         }
-        msgs
+        Ok(msgs)
     }
 
-    fn update_break(&mut self) -> Vec<PromoMessage<TTask>> {
+    fn update_break(&mut self) -> Result<Vec<PromoMessage<TTask, ()>>, ()> {
         let mut msgs = vec![];
 
         if self.break_timer.is_completed() {
-            msgs.push(self.set_state(PromoState::Working));
-            self.work_timer.reset();
+            msgs.push(self.set_state(PromoState::Working)?);
+            self.work_timer.reset()?;
         }
-        msgs
+        Ok(msgs)
     }
 
-    fn update_resting(&mut self) -> Vec<PromoMessage<TTask>> {
+    fn update_resting(&mut self) -> Result<Vec<PromoMessage<TTask, ()>>, ()> {
         let mut msgs = vec![];
 
         if self.rest_timer.is_completed() {
-            msgs.push(self.set_state(PromoState::Working));
-            self.work_timer.start();
+            msgs.push(self.set_state(PromoState::Working)?);
+            self.work_timer.start()?;
         }
 
-        msgs
+        Ok(msgs)
     }
 }
 
-impl<TTask, TTimer> Promo<TTask, TTimer> for SimplePromo<TTask, TTimer>
+impl<TTask, TTimer> Promo<TTask, TTimer, ()> for SimplePromo<TTask, TTimer>
 where
-    TTask: Task,
-    TTimer: Timer,
+    TTask: Task<()>,
+    TTimer: Timer<()>,
 {
-    fn update(&mut self) -> Vec<PromoMessage<TTask>> {
-        match self.state() {
+    fn update(&mut self) -> Result<Vec<PromoMessage<TTask, ()>>, ()> {
+        Ok(match self.state() {
             PromoState::NotStarted => {
                 // start the timer and change state
-                self.work_timer.reset();
-                vec![self.set_state(PromoState::Working)]
+                self.work_timer.reset()?;
+                vec![self.set_state(PromoState::Working)?]
             }
-            PromoState::Working => self.update_working(),
-            PromoState::Break => self.update_break(),
-            PromoState::Resting => self.update_resting(),
+            PromoState::Working => self.update_working()?,
+            PromoState::Break => self.update_break()?,
+            PromoState::Resting => self.update_resting()?,
             PromoState::Paused | PromoState::Completed => vec![],
-        }
+        })
     }
 
     /// Should call output.state_changed!
-    fn set_state(&mut self, state: PromoState) -> PromoMessage<TTask> {
+    fn set_state(&mut self, state: PromoState) -> Result<PromoMessage<TTask, ()>, ()> {
         self.prev_state = self.state();
         self.state = state;
-        PromoMessage::Transition(Transition::new(self.prev_state, self.state()))
+        Ok(PromoMessage::Transition(Transition::new(
+            self.prev_state,
+            self.state(),
+        )))
     }
 
-    fn toggle_pause(&mut self) -> PromoMessage<TTask> {
+    fn toggle_pause(&mut self) -> Result<PromoMessage<TTask, ()>, ()> {
         if !self.is_paused() {
             match self.state() {
                 PromoState::Working => self.work_timer.pause(),
@@ -262,7 +266,7 @@ mod tests {
             .unwrap();
 
         // not started
-        let mut output = promo.update();
+        let mut output = promo.update().unwrap();
 
         // start working
         assert_eq!(
