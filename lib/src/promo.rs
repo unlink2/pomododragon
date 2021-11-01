@@ -282,133 +282,84 @@ mod tests {
         // *************
         // first update
         // *************
-        /*promo.update(&mut output).unwrap();
-        assert_eq!(
-            output.data.pop(),
-            Some(SampleOutputData {
-                task: Some(SimpleTask::new("Task1".into())),
-                state: PromoState::Working,
-                from: None
-            })
-        );
-        assert!(output.data.is_empty());
+        let output = promo.update().unwrap();
+        assert_eq!(promo.task(), Some(&SimpleTask::new("Task1".into())));
+        assert!(output.is_empty());
 
         // *************
         // complete first work
         // *************
         std::thread::sleep(Duration::from_millis(201));
-        promo.update(&mut output).unwrap();
+        let mut output = promo.update().unwrap();
         // transition
         assert_eq!(
-            output.data.pop(),
-            Some(SampleOutputData {
-                task: None,
-                state: PromoState::Break,
-                from: Some(PromoState::Working),
-            })
-        );
-        // update call
-        assert_eq!(
-            output.data.pop(),
-            Some(SampleOutputData {
-                task: Some(SimpleTask::new("Task1".into())),
-                state: PromoState::Working,
-                from: None
-            })
+            output.pop(),
+            Some(PromoMessage::Transition(Transition::new(
+                PromoState::Working,
+                PromoState::Break,
+            )))
         );
         // task completed call
+        let mut t1 = SimpleTask::new("Task1".into());
+        t1.complete().unwrap();
         assert_eq!(
-            output.data.pop(),
-            Some(SampleOutputData {
-                task: Some(SimpleTask::new("Task1".into())),
-                state: PromoState::Working,
-                from: None
-            })
+            output.pop(),
+            Some(PromoMessage::TaskCompleted(TaskCompleted::new(t1)))
         );
-        assert!(output.data.is_empty());
+
+        assert!(output.is_empty());
 
         // *************
         // update on break
         // *************
-        promo.update(&mut output).unwrap();
-        assert_eq!(
-            output.data.pop(),
-            Some(SampleOutputData {
-                task: Some(SimpleTask::new("Task2".into())),
-                state: PromoState::Break,
-                from: None
-            })
-        );
-        assert!(output.data.is_empty());
+        let output = promo.update().unwrap();
+        assert!(output.is_empty());
 
         // *************
         // attempt pause
         // *************
-        promo.toggle_pause(&mut output).unwrap();
+        let output = promo.toggle_pause().unwrap();
         // transition
         assert_eq!(
-            output.data.pop(),
-            Some(SampleOutputData {
-                task: None,
-                state: PromoState::Paused,
-                from: Some(PromoState::Break),
-            })
+            output,
+            PromoMessage::Transition(Transition::new(PromoState::Break, PromoState::Paused))
         );
-        assert!(output.data.is_empty());
+
         assert!(promo.break_timer.is_paused());
         assert!(!promo.work_timer.is_paused());
         assert!(!promo.rest_timer.is_paused());
 
         // should still be paused!
         std::thread::sleep(Duration::from_millis(500));
-        promo.toggle_pause(&mut output).unwrap();
+        let output = promo.toggle_pause().unwrap();
         // transition
         assert_eq!(
-            output.data.pop(),
-            Some(SampleOutputData {
-                task: None,
-                state: PromoState::Break,
-                from: Some(PromoState::Paused),
-            })
+            output,
+            PromoMessage::Transition(Transition::new(PromoState::Paused, PromoState::Break))
         );
-        assert!(output.data.is_empty());
         assert!(!promo.break_timer.is_paused());
         assert!(!promo.work_timer.is_paused());
         assert!(!promo.rest_timer.is_paused());
 
-        promo.update(&mut output).unwrap();
-        assert_eq!(
-            output.data.pop(),
-            Some(SampleOutputData {
-                task: Some(SimpleTask::new("Task2".into())),
-                state: PromoState::Break,
-                from: None
-            })
-        );
-        assert!(output.data.is_empty());
+        let output = promo.update().unwrap();
+        assert_eq!(promo.task(), Some(&SimpleTask::new("Task2".into())));
+        assert!(output.is_empty());
 
         // *************
         // complete break
         // *************
         std::thread::sleep(Duration::from_millis(101));
 
-        promo.update(&mut output).unwrap();
+        let mut output = promo.update().unwrap();
+        assert_eq!(promo.task(), Some(&SimpleTask::new("Task2".into())));
+        // transition
         assert_eq!(
-            output.data.pop(),
-            Some(SampleOutputData {
-                task: None,
-                state: PromoState::Break,
-                from: None
-            })
+            output.pop(),
+            Some(PromoMessage::Transition(Transition::new(
+                PromoState::Break,
+                PromoState::Working,
+            )))
         );
-        assert_eq!(
-            output.data.pop(),
-            Some(SampleOutputData {
-                task: Some(SimpleTask::new("Task2".into())),
-                state: PromoState::Break,
-                from: None
-            })
-        );
-        assert!(output.data.is_empty());*/
+        assert!(output.is_empty());
     }
 }

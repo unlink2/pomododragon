@@ -64,7 +64,7 @@ pub trait Timer<TError>: Clone {
     fn resume(&mut self);
 }
 
-/// Timer based on simple instanct and duration
+/// Timer based on simple instant and duration
 #[derive(Clone)]
 pub struct InstantTimer {
     start: Option<Instant>,
