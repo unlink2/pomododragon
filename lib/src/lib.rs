@@ -1,9 +1,9 @@
 mod output;
-mod promo;
+mod pomo;
 mod task;
 mod time;
 
 pub use output::*;
-pub use promo::*;
+pub use pomo::*;
 pub use task::*;
 pub use time::*;

@@ -1,15 +1,15 @@
 use std::marker::PhantomData;
 
-use crate::{PromoState, Task};
+use crate::{PomoState, Task};
 
 #[derive(PartialEq, Eq, Debug)]
 pub struct Transition {
-    pub from: PromoState,
-    pub to: PromoState,
+    pub from: PomoState,
+    pub to: PomoState,
 }
 
 impl Transition {
-    pub fn new(from: PromoState, to: PromoState) -> Self {
+    pub fn new(from: PomoState, to: PomoState) -> Self {
         Self { from, to }
     }
 }
@@ -36,7 +36,7 @@ where
 }
 
 #[derive(PartialEq, Eq, Debug)]
-pub enum PromoMessage<TTask, TError>
+pub enum PomoMessage<TTask, TError>
 where
     TTask: Task<TError>,
 {
