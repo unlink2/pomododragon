@@ -1,5 +1,4 @@
 use clap::Parser;
-use spinners;
 use spinners::{Spinner, Spinners};
 use std::thread;
 use std::time::Duration;
@@ -58,7 +57,7 @@ fn main() {
         pomo.update().expect("Error while processing timer");
 
         let message = if pomo.is_paused() {
-            format!("Paused")
+            "Paused".into()
         } else {
             let state = match pomo.state() {
                 PomoState::NotStarted => "Not Started",
@@ -75,7 +74,7 @@ fn main() {
             };
 
             let timer = match pomo.timer() {
-                Some(timer) => timer.elapsed().unwrap_or(Duration::from_secs(0)),
+                Some(timer) => timer.elapsed().unwrap_or_else(|| Duration::from_secs(0)),
                 None => Duration::from_secs(0),
             };
 
