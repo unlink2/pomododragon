@@ -14,7 +14,7 @@ struct Opts {
     break_time: String,
     #[clap(short, long, default_value = "25m")]
     work_time: String,
-    #[clap(short, long, default_value = "30")]
+    #[clap(short, long, default_value = "30m")]
     rest_time: String,
 
     #[clap(short, long, default_value = "10")]
