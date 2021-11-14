@@ -3,17 +3,19 @@ use spinners::{Spinner, Spinners};
 use std::thread;
 use std::time::Duration;
 
-use pomododragon::{InstantTimer, Pomo, PomoState, SimplePomoBuilder, SimpleTask, Timer};
+use pomododragon::{
+    InstantTimer, Pomo, PomoState, SimplePomoBuilder, SimpleTask, TimeParser, Timer,
+};
 
 #[derive(Parser)]
 #[clap(version = "0.1.0", author = "Lukas Krickl <lukas@krickl.dev>")]
 struct Opts {
-    #[clap(short, long, default_value = "300")]
-    break_time_secs: u64,
-    #[clap(short, long, default_value = "1500")]
-    work_time_secs: u64,
-    #[clap(short, long, default_value = "1800")]
-    rest_time_secs: u64,
+    #[clap(short, long, default_value = "5m")]
+    break_time: String,
+    #[clap(short, long, default_value = "25m")]
+    work_time: String,
+    #[clap(short, long, default_value = "30")]
+    rest_time: String,
 
     #[clap(short, long, default_value = "10")]
     poll_millis: u64,
@@ -37,9 +39,15 @@ fn main() {
     }
 
     let mut pomo = SimplePomoBuilder::<SimpleTask, InstantTimer>::default()
-        .break_timer(InstantTimer::new(Duration::from_secs(opts.break_time_secs)))
-        .work_timer(InstantTimer::new(Duration::from_secs(opts.work_time_secs)))
-        .rest_timer(InstantTimer::new(Duration::from_secs(opts.rest_time_secs)))
+        .break_timer(InstantTimer::new(
+            TimeParser::parse(&opts.break_time).expect("Unable to parse time"),
+        ))
+        .work_timer(InstantTimer::new(
+            TimeParser::parse(&opts.work_time).expect("Unable to parse time"),
+        ))
+        .rest_timer(InstantTimer::new(
+            TimeParser::parse(&opts.rest_time).expect("Unable to parse time"),
+        ))
         .cycles_until_rest(opts.until_break)
         .total_cycles(opts.total)
         .tasks(tasks)
