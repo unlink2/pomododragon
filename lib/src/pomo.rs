@@ -40,7 +40,7 @@ pub enum PomoState {
     NotStarted,
     Working,
     Break,
-    Resting,
+    LongBreak,
     Completed,
     Paused,
 }
@@ -66,14 +66,14 @@ where
     break_timer: TTimer, // short break
     #[builder(default = "TTimer::default_work_timer()")]
     work_timer: TTimer, // work
-    #[builder(default = "TTimer::default_rest_timer()")]
-    rest_timer: TTimer, // long break,
+    #[builder(default = "TTimer::default_long_break_timer()")]
+    long_break_timer: TTimer, // long break,
 
     // cycle counts
     #[builder(default = "0")]
     current_cycles: usize,
     #[builder(default = "4")]
-    cycles_until_rest: usize,
+    cycles_until_long_break: usize,
     #[builder(default = "8")]
     total_cycles: usize,
 
@@ -93,7 +93,7 @@ where
             vec![],
             TTimer::default_work_timer(),
             TTimer::default_break_timer(),
-            TTimer::default_rest_timer(),
+            TTimer::default_long_break_timer(),
         )
     }
 }
@@ -107,15 +107,15 @@ where
         tasks: Vec<TTask>,
         work_timer: TTimer,
         break_timer: TTimer,
-        rest_timer: TTimer,
+        long_break_timer: TTimer,
     ) -> Self {
         Self {
             tasks,
             work_timer,
             break_timer,
-            rest_timer,
+            long_break_timer,
             total_cycles: 8,
-            cycles_until_rest: 4,
+            cycles_until_long_break: 4,
             current_cycles: 0,
             state: PomoState::default(),
             prev_state: PomoState::default(),
@@ -135,13 +135,13 @@ where
                 msgs.push(PomoMessage::TaskCompleted(TaskCompleted::new(comp)));
             }
 
-            // either rest or break
+            // either long or regular break
             if self.current_cycles == self.total_cycles {
                 // DONE!
                 msgs.push(self.set_state(PomoState::Completed)?);
-            } else if self.current_cycles % self.cycles_until_rest == 0 {
-                msgs.push(self.set_state(PomoState::Resting)?);
-                self.rest_timer.reset()?;
+            } else if self.current_cycles % self.cycles_until_long_break == 0 {
+                msgs.push(self.set_state(PomoState::LongBreak)?);
+                self.long_break_timer.reset()?;
             } else {
                 msgs.push(self.set_state(PomoState::Break)?);
                 self.break_timer.reset()?;
@@ -160,10 +160,10 @@ where
         Ok(msgs)
     }
 
-    fn update_resting(&mut self) -> Result<Vec<PomoMessage<TTask, ()>>, ()> {
+    fn update_long_break(&mut self) -> Result<Vec<PomoMessage<TTask, ()>>, ()> {
         let mut msgs = vec![];
 
-        if self.rest_timer.is_completed() {
+        if self.long_break_timer.is_completed() {
             msgs.push(self.set_state(PomoState::Working)?);
             self.work_timer.start()?;
         }
@@ -186,7 +186,7 @@ where
             }
             PomoState::Working => self.update_working()?,
             PomoState::Break => self.update_break()?,
-            PomoState::Resting => self.update_resting()?,
+            PomoState::LongBreak => self.update_long_break()?,
             PomoState::Paused | PomoState::Completed => vec![],
         })
     }
@@ -206,7 +206,7 @@ where
             match self.state() {
                 PomoState::Working => self.work_timer.pause(),
                 PomoState::Break => self.break_timer.pause(),
-                PomoState::Resting => self.rest_timer.pause(),
+                PomoState::LongBreak => self.long_break_timer.pause(),
                 _ => (),
             }
             self.set_state(PomoState::Paused)
@@ -214,7 +214,7 @@ where
             match self.prev_state {
                 PomoState::Working => self.work_timer.resume(),
                 PomoState::Break => self.break_timer.resume(),
-                PomoState::Resting => self.rest_timer.resume(),
+                PomoState::LongBreak => self.long_break_timer.resume(),
                 _ => (),
             }
             self.set_state(self.prev_state)
@@ -229,7 +229,7 @@ where
         match self.state() {
             PomoState::Working => Some(&self.work_timer),
             PomoState::Break => Some(&self.break_timer),
-            PomoState::Resting => Some(&self.rest_timer),
+            PomoState::LongBreak => Some(&self.long_break_timer),
             _ => None,
         }
     }
@@ -261,7 +261,7 @@ mod tests {
         let mut promo = SimplePomoBuilder::<SimpleTask, InstantTimer>::default()
             .break_timer(InstantTimer::new(Duration::from_millis(bd - 1)))
             .work_timer(InstantTimer::new(Duration::from_millis(wd - 1)))
-            .rest_timer(InstantTimer::new(Duration::from_millis(rd - 1)))
+            .long_break_timer(InstantTimer::new(Duration::from_millis(rd - 1)))
             .tasks(vec![
                 SimpleTask::new("Task1".into()),
                 SimpleTask::new("Task2".into()),
@@ -333,7 +333,7 @@ mod tests {
 
         assert!(promo.break_timer.is_paused());
         assert!(!promo.work_timer.is_paused());
-        assert!(!promo.rest_timer.is_paused());
+        assert!(!promo.long_break_timer.is_paused());
 
         // should still be paused!
         std::thread::sleep(Duration::from_millis(pd));
@@ -345,7 +345,7 @@ mod tests {
         );
         assert!(!promo.break_timer.is_paused());
         assert!(!promo.work_timer.is_paused());
-        assert!(!promo.rest_timer.is_paused());
+        assert!(!promo.long_break_timer.is_paused());
 
         let output = promo.update().unwrap();
         assert_eq!(promo.task(), Some(&SimpleTask::new("Task2".into())));
@@ -460,13 +460,13 @@ mod tests {
             output.pop(),
             Some(PomoMessage::Transition(Transition::new(
                 PomoState::Working,
-                PomoState::Resting,
+                PomoState::LongBreak,
             )))
         );
         assert!(output.is_empty());
 
         // *************
-        // complete rest 1
+        // complete long break 1
         // *************
         std::thread::sleep(Duration::from_millis(rd));
 
@@ -476,7 +476,7 @@ mod tests {
         assert_eq!(
             output.pop(),
             Some(PomoMessage::Transition(Transition::new(
-                PomoState::Resting,
+                PomoState::LongBreak,
                 PomoState::Working,
             )))
         );

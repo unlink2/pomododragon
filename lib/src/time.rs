@@ -18,7 +18,7 @@ pub trait Timer<TError>: Clone {
         Self::from_goal(Duration::from_secs(60 * 5))
     }
 
-    fn default_rest_timer() -> Self
+    fn default_long_break_timer() -> Self
     where
         Self: Sized,
     {

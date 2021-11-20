@@ -15,7 +15,7 @@ struct Opts {
     #[clap(short, long, default_value = "25m")]
     work_time: String,
     #[clap(short, long, default_value = "30m")]
-    rest_time: String,
+    long_break_time: String,
 
     #[clap(short, long, default_value = "10")]
     poll_millis: u64,
@@ -45,10 +45,10 @@ fn main() {
         .work_timer(InstantTimer::new(
             TimeParser::parse(&opts.work_time).expect("Unable to parse time"),
         ))
-        .rest_timer(InstantTimer::new(
-            TimeParser::parse(&opts.rest_time).expect("Unable to parse time"),
+        .long_break_timer(InstantTimer::new(
+            TimeParser::parse(&opts.long_break_time).expect("Unable to parse time"),
         ))
-        .cycles_until_rest(opts.until_break)
+        .cycles_until_long_break(opts.until_break)
         .total_cycles(opts.total)
         .tasks(tasks)
         .build()
@@ -70,8 +70,8 @@ fn main() {
             let state = match pomo.state() {
                 PomoState::NotStarted => "Not Started",
                 PomoState::Working => "Working",
-                PomoState::Break => "Break",
-                PomoState::Resting => "Resting",
+                PomoState::Break => "Short Break",
+                PomoState::LongBreak => "Long Break",
                 PomoState::Paused => "Paused",
                 PomoState::Completed => "Completed",
             };
