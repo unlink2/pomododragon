@@ -20,6 +20,7 @@ pub struct App {
     // It can be used to send messages to the component
     link: ComponentLink<Self>,
     pomo: Option<SimplePomo<SimpleTask, InstantTimer>>,
+    tasks: Vec<SimpleTask>,
     _task: IntervalTask,
 }
 
@@ -34,6 +35,7 @@ impl Component for App {
         Self {
             link,
             pomo: None,
+            tasks: vec![],
             _task: task,
         }
     }
@@ -41,6 +43,7 @@ impl Component for App {
     fn update(&mut self, msg: Self::Message) -> ShouldRender {
         match msg {
             Msg::Start => true,
+            Msg::Add => true,
             _ => true,
         }
     }
@@ -51,11 +54,19 @@ impl Component for App {
 
     fn view(&self) -> Html {
         html! {
-            <div class="container">
-                <Nav />
-                    <button class="button is-primary" onclick=self.link.callback(|_| Msg::Start)>{ "Start" }</button>
-                <Footer />
-            </div>
-        }
+                   <div class="container">
+                       <Nav />
+        <input
+                       class="new-todo"
+                       placeholder="What needs to be done?"
+                       onkeypress=self.link.batch_callback(|e: KeyboardEvent| {
+                           if e.key() == "Enter" { Some(Msg::Add) } else { None }
+                       })
+                   />
+                           <button class="button is-primary" onclick=self.link.callback(|_| Msg::Start)>{ "Start" }</button>
+                           <button class="button is-primary" onclick=self.link.callback(|_| Msg::Add)>{ "Add" }</button>
+                       <Footer />
+                   </div>
+               }
     }
 }
