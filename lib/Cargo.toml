@@ -12,5 +12,10 @@ edition = "2021"
 name = "pomododragon"
 path = "src/lib.rs"
 
+[features]
+stdweb = [ "instant/stdweb" ]
+wasm-bindgen = [ "instant/wasm-bindgen" ]
+
 [dependencies]
 derive_builder = "0.10.2"
+instant = "0.1.12"

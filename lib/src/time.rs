@@ -1,5 +1,6 @@
+use instant::Instant; // portable instant for native and wasm
 use std::collections::HashMap;
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 pub trait Timer<TError>: Clone {
     fn from_goal(goal: Duration) -> Self;

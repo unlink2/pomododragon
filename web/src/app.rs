@@ -54,19 +54,27 @@ impl Component for App {
 
     fn view(&self) -> Html {
         html! {
-                   <div class="container">
-                       <Nav />
-        <input
-                       class="new-todo"
-                       placeholder="What needs to be done?"
-                       onkeypress=self.link.batch_callback(|e: KeyboardEvent| {
-                           if e.key() == "Enter" { Some(Msg::Add) } else { None }
-                       })
-                   />
-                           <button class="button is-primary" onclick=self.link.callback(|_| Msg::Start)>{ "Start" }</button>
-                           <button class="button is-primary" onclick=self.link.callback(|_| Msg::Add)>{ "Add" }</button>
-                       <Footer />
-                   </div>
-               }
+            <div class="container">
+                <Nav />
+                <input
+                 class="new-todo"
+                 placeholder="What needs to be done?"
+                 onkeypress=self.link.batch_callback(|e: KeyboardEvent| {
+                         if e.key() == "Enter" { Some(Msg::Add) } else { None }
+                     })
+                />
+                <button
+                 class="button is-primary"
+                 onclick=self.link.callback(|_| Msg::Start)>
+                     { "Start" }
+                </button>
+                <button
+                 class="button is-primary"
+                 onclick=self.link.callback(|_| Msg::Add)>
+                     { "Add" }
+                </button>
+                <Footer />
+            </div>
+        }
     }
 }
