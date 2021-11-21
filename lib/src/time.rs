@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::time::{Duration, Instant};
 
 pub trait Timer<TError>: Clone {
@@ -17,7 +18,7 @@ pub trait Timer<TError>: Clone {
         Self::from_goal(Duration::from_secs(60 * 5))
     }
 
-    fn default_rest_timer() -> Self
+    fn default_long_break_timer() -> Self
     where
         Self: Sized,
     {
@@ -126,6 +127,76 @@ impl Timer<()> for InstantTimer {
     }
 }
 
+/// A time string parser intended to be used for simple time input
+pub struct TimeParser;
+impl TimeParser {
+    /// Parses a time string of form 1h5m40s100ms200us
+    /// Spaces and tabs are ignored
+    /// Returns as duration, or None on invalid input
+    pub fn parse(time_str: &str) -> Option<Duration> {
+        let mut start;
+        let mut current = 0;
+        let mut result = 0;
+
+        let mut operators = HashMap::new();
+        operators.insert("\0", 1000);
+        operators.insert("ms", 1);
+        operators.insert("s", 1000);
+        operators.insert("m", 60000);
+        operators.insert("h", 3600000);
+
+        // always scan number+operator
+        while current < time_str.len() {
+            start = current;
+            // TODO ignore white-spaces between numbers/operators
+            let num = Self::scan_num(time_str, start, &mut current)?;
+
+            start = current;
+            let op = Self::scan_operator(time_str, start, &mut current, &operators)?;
+            result += num * op;
+        }
+        Some(Duration::from_millis(result))
+    }
+
+    fn scan_operator(
+        time_str: &str,
+        start: usize,
+        current: &mut usize,
+        operators: &HashMap<&str, u64>,
+    ) -> Option<u64> {
+        while Self::is_alpha(time_str.chars().nth(*current).unwrap_or('\0')) {
+            *current += 1;
+        }
+        // no operator? return 1, but only if
+        // current is end of string too
+        if start == *current && *current >= time_str.len() {
+            Some(1)
+        } else if start == *current {
+            None
+        } else {
+            let operator = &time_str[start..*current];
+            operators.get(operator).copied()
+        }
+    }
+
+    fn scan_num(time_str: &str, start: usize, current: &mut usize) -> Option<u64> {
+        while Self::is_numeric(time_str.chars().nth(*current).unwrap_or('\0')) {
+            *current += 1;
+        }
+
+        let number = &time_str[start..*current];
+        number.parse::<u64>().ok()
+    }
+
+    fn is_numeric(c: char) -> bool {
+        ('0'..='9').contains(&c)
+    }
+
+    fn is_alpha(c: char) -> bool {
+        ('a'..='z').contains(&c) || ('A'..='Z').contains(&c)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -183,5 +254,19 @@ mod tests {
         std::thread::sleep(Duration::from_millis(150));
         assert!(timer.is_completed());
         assert!(!timer.is_paused());
+    }
+
+    #[test]
+    fn it_should_parse_time_str() {
+        let ms = TimeParser::parse("1h20m10s5").unwrap();
+        assert_eq!(
+            ms,
+            Duration::from_millis((1 * 3600000) + (20 * 60000) + (10 * 1000) + 5)
+        );
+    }
+
+    #[test]
+    fn it_should_not_parse_time_str_bad_operator() {
+        assert_eq!(TimeParser::parse("1h20m10@5"), None);
     }
 }
