@@ -96,6 +96,9 @@ impl Component for App {
                         self.view_setup()
                     }
                     {
+                        self.view_timer()
+                    }
+                    {
                         self.view_task_list()
                     }
                 </div>
@@ -106,6 +109,14 @@ impl Component for App {
 }
 
 impl App {
+    fn view_timer(&self) -> Html {
+        html! {
+            <div>
+                { "Timer" }
+            </div>
+        }
+    }
+
     fn view_setup(&self) -> Html {
         html! {
             <div>
