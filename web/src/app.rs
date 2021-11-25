@@ -1,7 +1,7 @@
 use crate::footer::Footer;
 use crate::nav::Nav;
 use pomododragon::{
-    InstantTimer, Pomo, PomoState, SimplePomo, SimplePomoBuilder, SimpleTask, Timer,
+    InstantTimer, Pomo, PomoMessage, PomoState, SimplePomo, SimplePomoBuilder, SimpleTask, Timer,
 };
 use std::time::Duration;
 use yew::prelude::*;
@@ -14,6 +14,7 @@ pub enum Msg {
     Pause,
     Add,
     Update(String),
+    PomoMessage(PomoMessage<SimpleTask, ()>),
     Error(String),
     Tick,
 }
@@ -52,6 +53,7 @@ impl Component for App {
         match msg {
             Msg::Start => {
                 // TODO don't unwrap!
+                self.pomo.unpause().expect("Unable to unpause");
                 true
             }
             Msg::Add => {
@@ -69,8 +71,12 @@ impl Component for App {
                 log::error!("{}", msg);
                 true
             }
+            Msg::PomoMessage(message) => {
+                log::info!("Got message {}", message);
+                true
+            }
             Msg::Tick => match self.pomo.update() {
-                Ok(_) => true,
+                Ok(message) => self.update(Msg::PomoMessage(message)),
                 Err(_) => self.update(Msg::Error("Unable to update!".into())),
             },
             _ => false,

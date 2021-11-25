@@ -47,6 +47,23 @@ pub enum PomoState {
     Paused,
 }
 
+impl std::fmt::Display for PomoState {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                Self::NotStarted => "NotStarted",
+                Self::Working => "Working",
+                Self::Break => "Break",
+                Self::LongBreak => "Long Break",
+                Self::Completed => "Completed",
+                Self::Paused => "Paused",
+            }
+        )
+    }
+}
+
 impl Default for PomoState {
     fn default() -> Self {
         Self::NotStarted
@@ -310,7 +327,7 @@ mod tests {
             .unwrap();
 
         // not started
-        let mut output = promo.update().unwrap();
+        let output = promo.update().unwrap();
 
         // start working
         assert_eq!(
@@ -330,7 +347,7 @@ mod tests {
         // complete first work
         // *************
         std::thread::sleep(Duration::from_millis(wd));
-        let mut output = promo.update().unwrap();
+        let output = promo.update().unwrap();
         let mut t1 = SimpleTask::new("Task1".into());
         // task completed call
         t1.complete().unwrap();

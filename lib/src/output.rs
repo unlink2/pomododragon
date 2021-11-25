@@ -35,6 +35,25 @@ where
         }
     }
 }
+
+impl<TTask, TError> std::fmt::Display for Transition<TTask, TError>
+where
+    TTask: Task<TError>,
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(
+            f,
+            "(from: {}, to: {}, completed: {})",
+            self.from,
+            self.to,
+            match &self.completed {
+                Some(task) => task.to_string(),
+                None => "None".into(),
+            }
+        )
+    }
+}
+
 #[derive(PartialEq, Eq, Debug)]
 pub enum PomoMessage<TTask, TError>
 where
@@ -42,4 +61,20 @@ where
 {
     Transition(Transition<TTask, TError>),
     NoMessage,
+}
+
+impl<TTask, TError> std::fmt::Display for PomoMessage<TTask, TError>
+where
+    TTask: Task<TError>,
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                Self::Transition(t) => t.to_string(),
+                Self::NoMessage => "NoMessage".into(),
+            }
+        )
+    }
 }
