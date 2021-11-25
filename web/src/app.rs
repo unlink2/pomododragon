@@ -38,7 +38,7 @@ impl Component for App {
 
         // this actually cannot fail in this case!
         // pause immediatly to avoid ticking
-        // pomo.pause().expect("Unable to pause!");
+        pomo.pause().expect("Unable to pause!");
 
         Self {
             link,

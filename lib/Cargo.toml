@@ -12,9 +12,6 @@ edition = "2021"
 name = "pomododragon"
 path = "src/lib.rs"
 
-[features]
-wasm-bindgen = [ "instant/wasm-bindgen" ]
-
 [dependencies]
 derive_builder = "0.10.2"
-instant = "0.1.12"
+instant = { version = "0.1.12", features = [ "wasm-bindgen", "inaccurate" ] }
