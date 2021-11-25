@@ -1,12 +1,11 @@
 @charset "utf-8";
 
-// Import only what you need from Bulma
-@import "./dist-libs/bulma/sass/utilities/_all.sass";
 @import "./dist-libs/bulma/sass/base/_all.sass";
-@import "./dist-libs/bulma/sass/elements/button.sass";
-@import "./dist-libs/bulma/sass/elements/container.sass";
-@import "./dist-libs/bulma/sass/elements/title.sass";
+@import "./dist-libs/bulma/sass/components/_all.sass";
+@import "./dist-libs/bulma/sass/elements/_all.sass";
 @import "./dist-libs/bulma/sass/form/_all.sass";
-@import "./dist-libs/bulma/sass/components/navbar.sass";
-@import "./dist-libs/bulma/sass/layout/hero.sass";
-@import "./dist-libs/bulma/sass/layout/section.sass";
+@import "./dist-libs/bulma/sass/grid/_all.sass";
+@import "./dist-libs/bulma/sass/helpers/_all.sass";
+@import "./dist-libs/bulma/sass/layout/_all.sass";
+@import "./dist-libs/bulma/sass/utilities/_all.sass";
+
