@@ -35,7 +35,7 @@ fn main() {
     let mut tasks = vec![];
 
     for s in opts.tasks {
-        tasks.push(SimpleTask::new(s));
+        tasks.push(SimpleTask::new(&s));
     }
 
     let mut pomo = SimplePomoBuilder::<SimpleTask, InstantTimer>::default()

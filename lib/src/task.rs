@@ -37,9 +37,9 @@ pub struct SimpleTask {
 }
 
 impl SimpleTask {
-    pub fn new(description: String) -> Self {
+    pub fn new(description: &str) -> Self {
         Self {
-            description,
+            description: description.into(),
             completed: false,
         }
     }

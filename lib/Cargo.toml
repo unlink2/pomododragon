@@ -13,7 +13,6 @@ name = "pomododragon"
 path = "src/lib.rs"
 
 [features]
-stdweb = [ "instant/stdweb" ]
 wasm-bindgen = [ "instant/wasm-bindgen" ]
 
 [dependencies]

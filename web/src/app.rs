@@ -6,12 +6,15 @@ use pomododragon::{
 use std::time::Duration;
 use yew::prelude::*;
 use yew::services::interval::{IntervalService, IntervalTask};
+use yew::InputData;
 
 pub enum Msg {
     Start,
     Stop,
     Pause,
     Add,
+    Update(String),
+    Error(String),
     Tick,
 }
 
@@ -19,8 +22,8 @@ pub struct App {
     // `ComponentLink` is like a reference to a component.
     // It can be used to send messages to the component
     link: ComponentLink<Self>,
-    pomo: Option<SimplePomo<SimpleTask, InstantTimer>>,
-    tasks: Vec<SimpleTask>,
+    pomo: SimplePomo<SimpleTask, InstantTimer>,
+    description_buffer: String,
     _task: IntervalTask,
 }
 
@@ -31,20 +34,46 @@ impl Component for App {
     fn create(_props: Self::Properties, link: ComponentLink<Self>) -> Self {
         let callback = link.callback(|_| Msg::Tick);
         let task = IntervalService::spawn(Duration::from_millis(200), callback);
+        let mut pomo = SimplePomo::default();
+
+        // this actually cannot fail in this case!
+        // pause immediatly to avoid ticking
+        // pomo.pause().expect("Unable to pause!");
 
         Self {
             link,
-            pomo: None,
-            tasks: vec![],
+            pomo,
+            description_buffer: "".into(),
             _task: task,
         }
     }
 
     fn update(&mut self, msg: Self::Message) -> ShouldRender {
         match msg {
-            Msg::Start => true,
-            Msg::Add => true,
-            _ => true,
+            Msg::Start => {
+                // TODO don't unwrap!
+                true
+            }
+            Msg::Add => {
+                self.pomo
+                    .tasks
+                    .push(SimpleTask::new(&self.description_buffer));
+                self.description_buffer = "".into();
+                true
+            }
+            Msg::Update(value) => {
+                self.description_buffer = value;
+                true
+            }
+            Msg::Error(msg) => {
+                log::error!("{}", msg);
+                true
+            }
+            Msg::Tick => match self.pomo.update() {
+                Ok(_) => true,
+                Err(_) => self.update(Msg::Error("Unable to update!".into())),
+            },
+            _ => false,
         }
     }
 
@@ -56,9 +85,29 @@ impl Component for App {
         html! {
             <div class="container">
                 <Nav />
-                <input
+                <div>
+                    {
+                        self.view_setup()
+                    }
+                    {
+                        self.view_task_list()
+                    }
+                </div>
+                <Footer />
+            </div>
+        }
+    }
+}
+
+impl App {
+    fn view_setup(&self) -> Html {
+        html! {
+            <div>
+               <input
                  class="new-todo"
                  placeholder="What needs to be done?"
+                 value=self.description_buffer.clone()
+                 oninput=self.link.callback(|e: InputData| Msg::Update(e.value))
                  onkeypress=self.link.batch_callback(|e: KeyboardEvent| {
                          if e.key() == "Enter" { Some(Msg::Add) } else { None }
                      })
@@ -73,7 +122,13 @@ impl Component for App {
                  onclick=self.link.callback(|_| Msg::Add)>
                      { "Add" }
                 </button>
-                <Footer />
+            </div>
+        }
+    }
+
+    fn view_task_list(&self) -> Html {
+        html! {
+            <div>
             </div>
         }
     }

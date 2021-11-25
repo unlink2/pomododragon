@@ -3,43 +3,43 @@ use std::marker::PhantomData;
 use crate::{PomoState, Task};
 
 #[derive(PartialEq, Eq, Debug)]
-pub struct Transition {
-    pub from: PomoState,
-    pub to: PomoState,
-}
-
-impl Transition {
-    pub fn new(from: PomoState, to: PomoState) -> Self {
-        Self { from, to }
-    }
-}
-
-#[derive(PartialEq, Eq, Debug)]
-pub struct TaskCompleted<TTask, TError>
+pub struct Transition<TTask, TError>
 where
     TTask: Task<TError>,
 {
-    pub task: TTask,
+    pub from: PomoState,
+    pub to: PomoState,
+    pub completed: Option<TTask>,
     phantom_error: PhantomData<TError>,
 }
 
-impl<TTask, TError> TaskCompleted<TTask, TError>
+impl<TTask, TError> Transition<TTask, TError>
 where
     TTask: Task<TError>,
 {
-    pub fn new(task: TTask) -> Self {
+    pub fn new(from: PomoState, to: PomoState) -> Self {
         Self {
-            task,
+            from,
+            to,
+            completed: None,
+            phantom_error: PhantomData::default(),
+        }
+    }
+
+    pub fn new_task(from: PomoState, to: PomoState, completed: TTask) -> Self {
+        Self {
+            from,
+            to,
+            completed: Some(completed),
             phantom_error: PhantomData::default(),
         }
     }
 }
-
 #[derive(PartialEq, Eq, Debug)]
 pub enum PomoMessage<TTask, TError>
 where
     TTask: Task<TError>,
 {
-    Transition(Transition),
-    TaskCompleted(TaskCompleted<TTask, TError>),
+    Transition(Transition<TTask, TError>),
+    NoMessage,
 }

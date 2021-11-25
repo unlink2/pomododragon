@@ -8,11 +8,16 @@ homepage = "https://github.com/unlink2/pomododragon"
 edition = "2021"
 
 [[bin]]
-name = "pomododragon"
+name = "pomododragon-web"
 path = "src/main.rs"
+
+[features]
+wasm-bindgen = [ "instant/wasm-bindgen" ]
 
 [dependencies]
 pomododragon = {path = "../lib"}
 yew = "0.18"
 wasm-logger = "0.2"
 log = "0.4"
+instant = "0.1.12"
+console_error_panic_hook = "0.1.7"
