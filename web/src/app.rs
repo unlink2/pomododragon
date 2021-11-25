@@ -71,10 +71,7 @@ impl Component for App {
                 log::error!("{}", msg);
                 true
             }
-            Msg::PomoMessage(message) => {
-                log::info!("Got message {}", message);
-                true
-            }
+            Msg::PomoMessage(_message) => true,
             Msg::Tick => match self.pomo.update() {
                 Ok(message) => self.update(Msg::PomoMessage(message)),
                 Err(_) => self.update(Msg::Error("Unable to update!".into())),
@@ -89,21 +86,27 @@ impl Component for App {
 
     fn view(&self) -> Html {
         html! {
-            <div class="container">
-                <Nav />
-                <div>
-                    {
-                        self.view_setup()
-                    }
-                    {
-                        self.view_timer()
-                    }
-                    {
-                        self.view_task_list()
-                    }
+            <section class="section">
+                <div class="container">
+                    <Nav />
+                    <div>
+                        {
+                            self.view_setup()
+                        }
+                        {
+                            if let Some(_timer) = self.pomo.timer() {
+                                self.view_timer()
+                            } else {
+                                html! {}
+                            }
+                        }
+                        {
+                            self.view_task_list()
+                        }
+                    </div>
+                    <Footer />
                 </div>
-                <Footer />
-            </div>
+            </section>
         }
     }
 }
@@ -112,7 +115,31 @@ impl App {
     fn view_timer(&self) -> Html {
         html! {
             <div>
-                { "Timer" }
+                <div>
+                    { self.pomo.state() }
+                </div>
+                <div>
+                    {
+                        if let Some(task) = self.pomo.task() {
+                            task.to_string()
+                        } else {
+                            "".into()
+                        }
+                    }
+                </div>
+                <div>
+                    {
+                        if let Some(timer) = self.pomo.timer() {
+                            if let Some(elapsed) = timer.elapsed() {
+                                format!("{}", elapsed.as_secs())
+                            } else {
+                                "".into()
+                            }
+                        } else {
+                            "".into()
+                        }
+                    }
+                </div>
             </div>
         }
     }
@@ -120,25 +147,29 @@ impl App {
     fn view_setup(&self) -> Html {
         html! {
             <div>
-               <input
-                 class="new-todo"
-                 placeholder="What needs to be done?"
-                 value=self.description_buffer.clone()
-                 oninput=self.link.callback(|e: InputData| Msg::Update(e.value))
-                 onkeypress=self.link.batch_callback(|e: KeyboardEvent| {
-                         if e.key() == "Enter" { Some(Msg::Add) } else { None }
-                     })
-                />
-                <button
-                 class="button is-primary"
-                 onclick=self.link.callback(|_| Msg::Start)>
-                     { "Start" }
-                </button>
-                <button
-                 class="button is-primary"
-                 onclick=self.link.callback(|_| Msg::Add)>
-                     { "Add" }
-                </button>
+                <div>
+                   <input
+                     class="new-todo"
+                     placeholder="What needs to be done?"
+                     value=self.description_buffer.clone()
+                     oninput=self.link.callback(|e: InputData| Msg::Update(e.value))
+                     onkeypress=self.link.batch_callback(|e: KeyboardEvent| {
+                             if e.key() == "Enter" { Some(Msg::Add) } else { None }
+                         })
+                    />
+                </div>
+                <div>
+                    <button
+                     class="button is-primary"
+                     onclick=self.link.callback(|_| Msg::Start)>
+                         { "Start" }
+                    </button>
+                    <button
+                     class="button is-primary"
+                     onclick=self.link.callback(|_| Msg::Add)>
+                         { "Add" }
+                    </button>
+                </div>
             </div>
         }
     }

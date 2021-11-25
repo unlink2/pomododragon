@@ -11,6 +11,8 @@ COPY . /usr/src/pomododragon
 RUN rustup default stable
 RUN cargo install trunk wasm-bindgen-cli
 RUN rustup target add wasm32-unknown-unknown
+RUN mkdir -p web/dist-libs/
+RUN git clone git@github.com:jgthms/bulma.git ./web/dist-libs/bulma
 
 EXPOSE 3000
 
