@@ -7,11 +7,11 @@ WORKDIR /usr/src/pomododragon
 RUN apt update -y && apt upgrade -y
 RUN apt install -y git
 
-COPY . /usr/src/pomododragon
 RUN rustup default stable
 RUN cargo install trunk wasm-bindgen-cli
 RUN rustup target add wasm32-unknown-unknown
-RUN mkdir -p web/dist-libs/
+COPY . /usr/src/pomododragon
+RUN mkdir -p /usr/src/pomododragon/web/dist-libs/
 RUN git clone git@github.com:jgthms/bulma.git ./web/dist-libs/bulma
 
 EXPOSE 3000
