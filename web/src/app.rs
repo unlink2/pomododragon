@@ -106,7 +106,7 @@ impl Component for App {
                 self.work_time_buffer = value;
                 self.pomo.work_timer = InstantTimer::new(
                     TimeParser::parse(&format!("{}m", self.work_time_buffer))
-                        .unwrap_or(Duration::from_secs(0)),
+                        .unwrap_or_else(|| Duration::from_secs(0)),
                 );
 
                 true
@@ -115,7 +115,7 @@ impl Component for App {
                 self.short_break_time_buffer = value;
                 self.pomo.break_timer = InstantTimer::new(
                     TimeParser::parse(&format!("{}m", self.short_break_time_buffer))
-                        .unwrap_or(Duration::from_secs(0)),
+                        .unwrap_or_else(|| Duration::from_secs(0)),
                 );
                 true
             }
@@ -123,20 +123,19 @@ impl Component for App {
                 self.long_break_time_buffer = value;
                 self.pomo.long_break_timer = InstantTimer::new(
                     TimeParser::parse(&format!("{}m", self.long_break_time_buffer))
-                        .unwrap_or(Duration::from_secs(0)),
+                        .unwrap_or_else(|| Duration::from_secs(0)),
                 );
                 true
             }
             Msg::UpdateUntilLongBreak(value) => {
                 self.until_long_break_buffer = value;
                 self.pomo.cycles_until_long_break =
-                    usize::from_str_radix(&self.total_cycles_buffer, 10).unwrap_or(8);
+                    self.total_cycles_buffer.parse::<usize>().unwrap_or(8);
                 true
             }
             Msg::UpdateTotalCycles(value) => {
                 self.total_cycles_buffer = value;
-                self.pomo.total_cycles =
-                    usize::from_str_radix(&self.total_cycles_buffer, 10).unwrap_or(8);
+                self.pomo.total_cycles = self.total_cycles_buffer.parse::<usize>().unwrap_or(8);
                 true
             }
             Msg::Error(msg) => {
@@ -149,7 +148,10 @@ impl Component for App {
                     if let Some(timer) = self.pomo.timer() {
                         self.progress = format!(
                             "{}",
-                            timer.elapsed().unwrap_or(Duration::from_secs(0)).as_secs()
+                            timer
+                                .elapsed()
+                                .unwrap_or_else(|| Duration::from_secs(0))
+                                .as_secs()
                         );
                         self.goal = format!("{}", timer.goal().as_secs());
                     }
