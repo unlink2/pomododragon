@@ -59,10 +59,12 @@ impl Component for App {
                 true
             }
             Msg::Add => {
-                self.pomo
-                    .tasks
-                    .push(SimpleTask::new(&self.description_buffer));
-                self.description_buffer = "".into();
+                if !self.description_buffer.is_empty() {
+                    self.pomo
+                        .tasks
+                        .push(SimpleTask::new(&self.description_buffer));
+                    self.description_buffer = "".into();
+                }
                 true
             }
             Msg::Delete(index) => {
@@ -118,12 +120,12 @@ impl App {
         html! {
             <div class="card">
                 <div class="card-header">
-                    <div class="card-header-title">
+                    <div class="card-header-title title">
                         { self.pomo.state() }
                     </div>
                 </div>
                 <div class="card-content">
-                    <div class="content">
+                    <div class="content title">
                         {
                             if let Some(task) = self.pomo.task() {
                                 task.to_string()
@@ -132,7 +134,7 @@ impl App {
                             }
                         }
                     </div>
-                    <div class="content">
+                    <div class="content title">
                         {
                             if let Some(timer) = self.pomo.timer() {
                                 if let Some(elapsed) = timer.elapsed() {
@@ -193,25 +195,25 @@ impl App {
     fn view_settings(&self) -> Html {
         html! {
             <div class="content">
-                <label>
-                    { "Work time" }
-                    <input class="input card-footer-item" type="number" />
-                </label>
-                <label>
-                    { "Break time" }
-                    <input class="input card-footer-item" type="number" />
-                </label>
+                <article class="content">
+                    <label>
+                        { "Work time" }
+                        <input min="0" class="input card-footer-item" type="number" />
+                    </label>
+                    <label>
+                        { "Break time" }
+                        <input min="0" class="input card-footer-item" type="number" />
+                    </label>
 
-                <label>
-                    { "Long Break" }
-                    <input class="input card-footer-item" type="number" />
-                </label>
-
-                <div class="">
-                   <label>
-                       { "Task" }
+                    <label>
+                        { "Long Break" }
+                        <input min="0" class="input card-footer-item" type="number" />
+                    </label>
+                </article>
+                <article class="content">
+                    <div class="columns">
                        <input
-                         class="input is-primary"
+                         class="input is-primary column is-three-quarters"
                          type="text"
                          placeholder="What needs to be done?"
                          value=self.description_buffer.clone()
@@ -220,13 +222,13 @@ impl App {
                                  if e.key() == "Enter" { Some(Msg::Add) } else { None }
                              })
                         />
-                    </label>
-                    <button
-                     class="button is-primary"
-                     onclick=self.link.callback(|_| Msg::Add)>
-                         { "Add" }
-                    </button>
-                </div>
+                        <button
+                            class="button is-primary column"
+                            onclick=self.link.callback(|_| Msg::Add)>
+                            { "Add" }
+                        </button>
+                    </div>
+                </article>
             </div>
         }
     }
