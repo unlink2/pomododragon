@@ -17,6 +17,9 @@ where
     /// returns the current task
     fn task(&self) -> Option<&TTask>;
 
+    fn tasks(&self) -> &[TTask];
+    fn tasks_mut(&mut self) -> &mut [TTask];
+
     /// returns the current timer
     fn timer(&self) -> Option<&TTimer>;
 
@@ -278,6 +281,14 @@ where
 
     fn task(&self) -> Option<&TTask> {
         self.tasks.get(0)
+    }
+
+    fn tasks(&self) -> &[TTask] {
+        &self.tasks
+    }
+
+    fn tasks_mut(&mut self) -> &mut [TTask] {
+        &mut self.tasks
     }
 
     fn timer(&self) -> Option<&TTimer> {

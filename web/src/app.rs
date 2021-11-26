@@ -1,7 +1,8 @@
 use crate::footer::Footer;
 use crate::nav::Nav;
 use pomododragon::{
-    InstantTimer, Pomo, PomoMessage, PomoState, SimplePomo, SimplePomoBuilder, SimpleTask, Timer,
+    InstantTimer, Pomo, PomoMessage, PomoState, SimplePomo, SimplePomoBuilder, SimpleTask, Task,
+    TaskKind, Timer,
 };
 use std::time::Duration;
 use yew::prelude::*;
@@ -13,6 +14,7 @@ pub enum Msg {
     Stop,
     Pause,
     Add,
+    Delete(usize),
     Update(String),
     PomoMessage(PomoMessage<SimpleTask, ()>),
     Error(String),
@@ -63,6 +65,10 @@ impl Component for App {
                 self.description_buffer = "".into();
                 true
             }
+            Msg::Delete(index) => {
+                self.pomo.tasks.remove(index);
+                true
+            }
             Msg::Update(value) => {
                 self.description_buffer = value;
                 true
@@ -91,14 +97,10 @@ impl Component for App {
                     <Nav />
                     <div>
                         {
-                            self.view_setup()
+                            self.view_timer()
                         }
                         {
-                            if let Some(_timer) = self.pomo.timer() {
-                                self.view_timer()
-                            } else {
-                                html! {}
-                            }
+                            self.view_settings()
                         }
                         {
                             self.view_task_list()
@@ -114,56 +116,111 @@ impl Component for App {
 impl App {
     fn view_timer(&self) -> Html {
         html! {
-            <div>
-                <div>
-                    { self.pomo.state() }
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-header-title">
+                        { self.pomo.state() }
+                    </div>
                 </div>
-                <div>
-                    {
-                        if let Some(task) = self.pomo.task() {
-                            task.to_string()
-                        } else {
-                            "".into()
-                        }
-                    }
-                </div>
-                <div>
-                    {
-                        if let Some(timer) = self.pomo.timer() {
-                            if let Some(elapsed) = timer.elapsed() {
-                                format!("{}", elapsed.as_secs())
+                <div class="card-content">
+                    <div class="content">
+                        {
+                            if let Some(task) = self.pomo.task() {
+                                task.to_string()
                             } else {
                                 "".into()
                             }
-                        } else {
-                            "".into()
                         }
-                    }
+                    </div>
+                    <div class="content">
+                        {
+                            if let Some(timer) = self.pomo.timer() {
+                                if let Some(elapsed) = timer.elapsed() {
+                                    let mins = elapsed.as_secs() / 60;
+                                    let secs = elapsed.as_secs() - mins * 60;
+                                    format!("{:02}:{:02}", mins, secs)
+                                } else {
+                                    "00:00".into()
+                                }
+                            } else {
+                                "00:00".into()
+                            }
+                        }
+                    </div>
+                    <progress class="progress is-primary is-large" value="10" max="100"></progress>
                 </div>
+                { self.view_controls() }
             </div>
         }
     }
 
-    fn view_setup(&self) -> Html {
-        html! {
-            <div>
-                <div>
-                   <input
-                     class="new-todo"
-                     placeholder="What needs to be done?"
-                     value=self.description_buffer.clone()
-                     oninput=self.link.callback(|e: InputData| Msg::Update(e.value))
-                     onkeypress=self.link.batch_callback(|e: KeyboardEvent| {
-                             if e.key() == "Enter" { Some(Msg::Add) } else { None }
-                         })
-                    />
-                </div>
-                <div>
+    fn view_start_stop(&self) -> Html {
+        {
+            // change start/stop buttom depending on the state
+            if self.pomo.state() == PomoState::Working {
+                html! {
                     <button
-                     class="button is-primary"
-                     onclick=self.link.callback(|_| Msg::Start)>
-                         { "Start" }
+                        class="button is-primary card-footer-item"
+                        onclick=self.link.callback(|_| Msg::Start)>
+                        { "Stop" }
                     </button>
+                }
+            } else {
+                html! {
+                    <button
+                        class="button is-primary card-footer-item"
+                        onclick=self.link.callback(|_| Msg::Start)>
+                        { "Start" }
+                    </button>
+                }
+            }
+        }
+    }
+
+    fn view_controls(&self) -> Html {
+        html! {
+            <div class="card-footer">
+                { self.view_start_stop() }
+                <button
+                 class="button is-primary card-footer-item"
+                 onclick=self.link.callback(|_| Msg::Start)>
+                     { "Pause" }
+                </button>
+            </div>
+        }
+    }
+
+    fn view_settings(&self) -> Html {
+        html! {
+            <div class="content">
+                <label>
+                    { "Work time" }
+                    <input class="input card-footer-item" type="number" />
+                </label>
+                <label>
+                    { "Break time" }
+                    <input class="input card-footer-item" type="number" />
+                </label>
+
+                <label>
+                    { "Long Break" }
+                    <input class="input card-footer-item" type="number" />
+                </label>
+
+                <div class="">
+                   <label>
+                       { "Task" }
+                       <input
+                         class="input is-primary"
+                         type="text"
+                         placeholder="What needs to be done?"
+                         value=self.description_buffer.clone()
+                         oninput=self.link.callback(|e: InputData| Msg::Update(e.value))
+                         onkeypress=self.link.batch_callback(|e: KeyboardEvent| {
+                                 if e.key() == "Enter" { Some(Msg::Add) } else { None }
+                             })
+                        />
+                    </label>
                     <button
                      class="button is-primary"
                      onclick=self.link.callback(|_| Msg::Add)>
@@ -174,9 +231,29 @@ impl App {
         }
     }
 
+    fn view_task(&self, task: &SimpleTask, index: usize) -> Html {
+        html! {
+            <div class="message">
+                <div class="message-header">
+                    { task.to_string() }
+                    <button
+                        class="delete"
+                        aria-label="delete"
+                        onclick=self.link.callback(move |_| Msg::Delete(index))>
+                    </button>
+                </div>
+            </div>
+        }
+    }
+
     fn view_task_list(&self) -> Html {
         html! {
-            <div>
+            <div class="container">
+                {
+                    for self.pomo.tasks().iter()
+                        .enumerate()
+                        .map(|(i, task)| self.view_task(task, i))
+                }
             </div>
         }
     }
