@@ -1,4 +1,4 @@
-use crate::{PomoMessage, Task, TaskCompleted, Timer, Transition};
+use crate::{PomoMessage, Task, Timer, Transition};
 use derive_builder::*;
 
 /// Pomo is a simple state machine
@@ -8,14 +8,21 @@ where
     TTask: Task<TError>,
     TTimer: Timer<TError>,
 {
+    fn start(&mut self) -> Result<PomoMessage<TTask, TError>, TError>;
+
+    fn reset(&mut self) -> Result<PomoMessage<TTask, TError>, TError>;
+
     /// shoudl call output.update
     /// and output.task_compelted if a task was completed!
-    fn update(&mut self) -> Result<Vec<PomoMessage<TTask, TError>>, TError>;
+    fn update(&mut self) -> Result<PomoMessage<TTask, TError>, TError>;
 
     fn state(&self) -> PomoState;
 
     /// returns the current task
     fn task(&self) -> Option<&TTask>;
+
+    fn tasks(&self) -> &[TTask];
+    fn tasks_mut(&mut self) -> &mut [TTask];
 
     /// returns the current timer
     fn timer(&self) -> Option<&TTimer>;
@@ -24,6 +31,8 @@ where
     fn set_state(&mut self, state: PomoState) -> Result<PomoMessage<TTask, TError>, TError>;
 
     fn toggle_pause(&mut self) -> Result<PomoMessage<TTask, TError>, TError>;
+    fn pause(&mut self) -> Result<PomoMessage<TTask, TError>, TError>;
+    fn unpause(&mut self) -> Result<PomoMessage<TTask, TError>, TError>;
 
     fn is_paused(&self) -> bool {
         self.state() == PomoState::Paused
@@ -38,11 +47,30 @@ where
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum PomoState {
     NotStarted,
+    Pending,
     Working,
     Break,
     LongBreak,
     Completed,
     Paused,
+}
+
+impl std::fmt::Display for PomoState {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                Self::NotStarted => "NotStarted",
+                Self::Pending => "Pending",
+                Self::Working => "Working",
+                Self::Break => "Break",
+                Self::LongBreak => "Long Break",
+                Self::Completed => "Completed",
+                Self::Paused => "Paused",
+            }
+        )
+    }
 }
 
 impl Default for PomoState {
@@ -61,26 +89,26 @@ where
     TTimer: Timer<()>,
 {
     #[builder(default)]
-    tasks: Vec<TTask>,
+    pub tasks: Vec<TTask>,
     #[builder(default = "TTimer::default_break_timer()")]
-    break_timer: TTimer, // short break
+    pub break_timer: TTimer, // short break
     #[builder(default = "TTimer::default_work_timer()")]
-    work_timer: TTimer, // work
+    pub work_timer: TTimer, // work
     #[builder(default = "TTimer::default_long_break_timer()")]
-    long_break_timer: TTimer, // long break,
+    pub long_break_timer: TTimer, // long break,
 
     // cycle counts
     #[builder(default = "0")]
-    current_cycles: usize,
+    pub current_cycles: usize,
     #[builder(default = "4")]
-    cycles_until_long_break: usize,
+    pub cycles_until_long_break: usize,
     #[builder(default = "8")]
-    total_cycles: usize,
+    pub total_cycles: usize,
 
     #[builder(default = "PomoState::default()")]
-    state: PomoState, // internal state
+    pub state: PomoState, // internal state
     #[builder(default = "PomoState::default()")]
-    prev_state: PomoState,
+    pub prev_state: PomoState,
 }
 
 impl<TTask, TTimer> Default for SimplePomo<TTask, TTimer>
@@ -122,53 +150,61 @@ where
         }
     }
 
-    fn update_working(&mut self) -> Result<Vec<PomoMessage<TTask, ()>>, ()> {
-        let mut msgs = vec![];
+    fn update_working(&mut self) -> Result<PomoMessage<TTask, ()>, ()> {
         // tick the timer
-        if self.work_timer.is_completed() {
+        let msg = if self.work_timer.is_completed() {
             self.current_cycles += 1;
 
             // remove first task and make it completed!
-            if !self.tasks.is_empty() {
+            let completed = if !self.tasks.is_empty() {
                 let mut comp = self.tasks.remove(0);
                 comp.complete()?;
-                msgs.push(PomoMessage::TaskCompleted(TaskCompleted::new(comp)));
-            }
+                Some(comp)
+            } else {
+                None
+            };
 
             // either long or regular break
-            if self.current_cycles == self.total_cycles {
+            let mut msg = if self.current_cycles == self.total_cycles {
                 // DONE!
-                msgs.push(self.set_state(PomoState::Completed)?);
+                self.set_state(PomoState::Completed)?
             } else if self.current_cycles % self.cycles_until_long_break == 0 {
-                msgs.push(self.set_state(PomoState::LongBreak)?);
                 self.long_break_timer.reset()?;
+                self.set_state(PomoState::LongBreak)?
             } else {
-                msgs.push(self.set_state(PomoState::Break)?);
                 self.break_timer.reset()?;
+                self.set_state(PomoState::Break)?
+            };
+            // if we did transition, set the completed task
+            if let PomoMessage::Transition(transition) = &mut msg {
+                transition.completed = completed;
             }
-        }
-        Ok(msgs)
+            msg
+        } else {
+            PomoMessage::NoMessage
+        };
+        Ok(msg)
     }
 
-    fn update_break(&mut self) -> Result<Vec<PomoMessage<TTask, ()>>, ()> {
-        let mut msgs = vec![];
-
-        if self.break_timer.is_completed() {
-            msgs.push(self.set_state(PomoState::Working)?);
+    fn update_break(&mut self) -> Result<PomoMessage<TTask, ()>, ()> {
+        let msg = if self.break_timer.is_completed() {
             self.work_timer.reset()?;
-        }
-        Ok(msgs)
+            self.set_state(PomoState::Working)?
+        } else {
+            PomoMessage::NoMessage
+        };
+        Ok(msg)
     }
 
-    fn update_long_break(&mut self) -> Result<Vec<PomoMessage<TTask, ()>>, ()> {
-        let mut msgs = vec![];
-
-        if self.long_break_timer.is_completed() {
-            msgs.push(self.set_state(PomoState::Working)?);
+    fn update_long_break(&mut self) -> Result<PomoMessage<TTask, ()>, ()> {
+        let msg = if self.long_break_timer.is_completed() {
             self.work_timer.start()?;
-        }
+            self.set_state(PomoState::Working)?
+        } else {
+            PomoMessage::NoMessage
+        };
 
-        Ok(msgs)
+        Ok(msg)
     }
 }
 
@@ -177,17 +213,31 @@ where
     TTask: Task<()>,
     TTimer: Timer<()>,
 {
-    fn update(&mut self) -> Result<Vec<PomoMessage<TTask, ()>>, ()> {
+    fn start(&mut self) -> Result<PomoMessage<TTask, ()>, ()> {
+        self.set_state(PomoState::Pending)
+    }
+
+    fn reset(&mut self) -> Result<PomoMessage<TTask, ()>, ()> {
+        self.current_cycles = 0;
+        self.state = PomoState::default();
+        self.prev_state = PomoState::default();
+        self.tasks.clear();
+
+        Ok(PomoMessage::Reset)
+    }
+
+    fn update(&mut self) -> Result<PomoMessage<TTask, ()>, ()> {
         Ok(match self.state() {
-            PomoState::NotStarted => {
+            PomoState::NotStarted => PomoMessage::NoMessage,
+            PomoState::Pending => {
                 // start the timer and change state
                 self.work_timer.reset()?;
-                vec![self.set_state(PomoState::Working)?]
+                self.set_state(PomoState::Working)?
             }
             PomoState::Working => self.update_working()?,
             PomoState::Break => self.update_break()?,
             PomoState::LongBreak => self.update_long_break()?,
-            PomoState::Paused | PomoState::Completed => vec![],
+            PomoState::Paused | PomoState::Completed => PomoMessage::NoMessage,
         })
     }
 
@@ -203,6 +253,14 @@ where
 
     fn toggle_pause(&mut self) -> Result<PomoMessage<TTask, ()>, ()> {
         if !self.is_paused() {
+            self.pause()
+        } else {
+            self.unpause()
+        }
+    }
+
+    fn pause(&mut self) -> Result<PomoMessage<TTask, ()>, ()> {
+        if !self.is_paused() {
             match self.state() {
                 PomoState::Working => self.work_timer.pause(),
                 PomoState::Break => self.break_timer.pause(),
@@ -211,6 +269,15 @@ where
             }
             self.set_state(PomoState::Paused)
         } else {
+            Ok(PomoMessage::Transition(Transition::new(
+                PomoState::Paused,
+                PomoState::Paused,
+            )))
+        }
+    }
+
+    fn unpause(&mut self) -> Result<PomoMessage<TTask, ()>, ()> {
+        if self.is_paused() {
             match self.prev_state {
                 PomoState::Working => self.work_timer.resume(),
                 PomoState::Break => self.break_timer.resume(),
@@ -218,11 +285,23 @@ where
                 _ => (),
             }
             self.set_state(self.prev_state)
+        } else {
+            Ok(PomoMessage::Transition(Transition::new(
+                self.state, self.state,
+            )))
         }
     }
 
     fn task(&self) -> Option<&TTask> {
         self.tasks.get(0)
+    }
+
+    fn tasks(&self) -> &[TTask] {
+        &self.tasks
+    }
+
+    fn tasks_mut(&mut self) -> &mut [TTask] {
+        &mut self.tasks
     }
 
     fn timer(&self) -> Option<&TTimer> {
@@ -258,7 +337,7 @@ mod tests {
         let rd = 250;
         let pd = 500;
 
-        let mut promo = SimplePomoBuilder::<SimpleTask, InstantTimer>::default()
+        let mut pomo = SimplePomoBuilder::<SimpleTask, InstantTimer>::default()
             .break_timer(InstantTimer::new(Duration::from_millis(bd - 1)))
             .work_timer(InstantTimer::new(Duration::from_millis(wd - 1)))
             .long_break_timer(InstantTimer::new(Duration::from_millis(rd - 1)))
@@ -271,268 +350,234 @@ mod tests {
             .build()
             .unwrap();
 
+        let output = pomo.start().unwrap();
+        assert_eq!(
+            output,
+            PomoMessage::Transition(Transition::new(PomoState::NotStarted, PomoState::Pending,))
+        );
+
         // not started
-        let mut output = promo.update().unwrap();
+        let output = pomo.update().unwrap();
 
         // start working
         assert_eq!(
-            output.pop(),
-            Some(PomoMessage::Transition(Transition::new(
-                PomoState::NotStarted,
-                PomoState::Working,
-            )))
+            output,
+            PomoMessage::Transition(Transition::new(PomoState::Pending, PomoState::Working,))
         );
-        assert_eq!(promo.task(), Some(&SimpleTask::new("Task1".into())));
-        assert!(output.is_empty());
+        assert_eq!(pomo.task(), Some(&SimpleTask::new("Task1".into())));
 
         // *************
         // first update
         // *************
-        let output = promo.update().unwrap();
-        assert_eq!(promo.task(), Some(&SimpleTask::new("Task1".into())));
-        assert!(output.is_empty());
+        let output = pomo.update().unwrap();
+        assert_eq!(pomo.task(), Some(&SimpleTask::new("Task1".into())));
+        assert_eq!(output, PomoMessage::NoMessage);
 
         // *************
         // complete first work
         // *************
         std::thread::sleep(Duration::from_millis(wd));
-        let mut output = promo.update().unwrap();
+        let output = pomo.update().unwrap();
+        let mut t1 = SimpleTask::new("Task1".into());
+        // task completed call
+        t1.complete().unwrap();
         // transition
         assert_eq!(
-            output.pop(),
-            Some(PomoMessage::Transition(Transition::new(
+            output,
+            PomoMessage::Transition(Transition::new_task(
                 PomoState::Working,
                 PomoState::Break,
-            )))
+                t1
+            ))
         );
-        // task completed call
-        let mut t1 = SimpleTask::new("Task1".into());
-        t1.complete().unwrap();
-        assert_eq!(
-            output.pop(),
-            Some(PomoMessage::TaskCompleted(TaskCompleted::new(t1)))
-        );
-
-        assert!(output.is_empty());
 
         // *************
         // update on break
         // *************
-        let output = promo.update().unwrap();
-        assert!(output.is_empty());
+        let output = pomo.update().unwrap();
+        assert_eq!(output, PomoMessage::NoMessage);
 
         // *************
         // attempt pause
         // *************
-        let output = promo.toggle_pause().unwrap();
+        let output = pomo.toggle_pause().unwrap();
         // transition
         assert_eq!(
             output,
             PomoMessage::Transition(Transition::new(PomoState::Break, PomoState::Paused))
         );
 
-        assert!(promo.break_timer.is_paused());
-        assert!(!promo.work_timer.is_paused());
-        assert!(!promo.long_break_timer.is_paused());
+        assert!(pomo.break_timer.is_paused());
+        assert!(!pomo.work_timer.is_paused());
+        assert!(!pomo.long_break_timer.is_paused());
 
         // should still be paused!
         std::thread::sleep(Duration::from_millis(pd));
-        let output = promo.toggle_pause().unwrap();
+        let output = pomo.toggle_pause().unwrap();
         // transition
         assert_eq!(
             output,
             PomoMessage::Transition(Transition::new(PomoState::Paused, PomoState::Break))
         );
-        assert!(!promo.break_timer.is_paused());
-        assert!(!promo.work_timer.is_paused());
-        assert!(!promo.long_break_timer.is_paused());
+        assert!(!pomo.break_timer.is_paused());
+        assert!(!pomo.work_timer.is_paused());
+        assert!(!pomo.long_break_timer.is_paused());
 
-        let output = promo.update().unwrap();
-        assert_eq!(promo.task(), Some(&SimpleTask::new("Task2".into())));
-        assert!(output.is_empty());
+        let output = pomo.update().unwrap();
+        assert_eq!(pomo.task(), Some(&SimpleTask::new("Task2".into())));
+        assert_eq!(output, PomoMessage::NoMessage);
 
         // *************
         // complete break
         // *************
         std::thread::sleep(Duration::from_millis(bd));
 
-        let mut output = promo.update().unwrap();
-        assert_eq!(promo.task(), Some(&SimpleTask::new("Task2".into())));
+        let output = pomo.update().unwrap();
+        assert_eq!(pomo.task(), Some(&SimpleTask::new("Task2".into())));
         // transition
         assert_eq!(
-            output.pop(),
-            Some(PomoMessage::Transition(Transition::new(
-                PomoState::Break,
-                PomoState::Working,
-            )))
+            output,
+            PomoMessage::Transition(Transition::new(PomoState::Break, PomoState::Working,))
         );
-        assert!(output.is_empty());
 
         // *************
         // complete work 2
         // *************
         std::thread::sleep(Duration::from_millis(wd));
 
-        let mut output = promo.update().unwrap();
-        assert_eq!(promo.task(), Some(&SimpleTask::new("Task3".into())));
-        // transition
-        assert_eq!(
-            output.pop(),
-            Some(PomoMessage::Transition(Transition::new(
-                PomoState::Working,
-                PomoState::Break,
-            )))
-        );
+        let output = pomo.update().unwrap();
         let mut t1 = SimpleTask::new("Task2".into());
         t1.complete().unwrap();
+        assert_eq!(pomo.task(), Some(&SimpleTask::new("Task3".into())));
+        // transition
         assert_eq!(
-            output.pop(),
-            Some(PomoMessage::TaskCompleted(TaskCompleted::new(t1)))
+            output,
+            PomoMessage::Transition(Transition::new_task(
+                PomoState::Working,
+                PomoState::Break,
+                t1
+            ))
         );
-        assert!(output.is_empty());
 
         // *************
         // complete break 2
         // *************
         std::thread::sleep(Duration::from_millis(bd));
 
-        let mut output = promo.update().unwrap();
-        assert_eq!(promo.task(), Some(&SimpleTask::new("Task3".into())));
+        let output = pomo.update().unwrap();
+        assert_eq!(pomo.task(), Some(&SimpleTask::new("Task3".into())));
         // transition
         assert_eq!(
-            output.pop(),
-            Some(PomoMessage::Transition(Transition::new(
-                PomoState::Break,
-                PomoState::Working,
-            )))
+            output,
+            PomoMessage::Transition(Transition::new(PomoState::Break, PomoState::Working,))
         );
-        assert!(output.is_empty());
 
         // *************
         // complete work 3
         // *************
         std::thread::sleep(Duration::from_millis(wd));
 
-        let mut output = promo.update().unwrap();
-        assert_eq!(promo.task(), None);
+        let output = pomo.update().unwrap();
+        assert_eq!(pomo.task(), None);
         // transition
-        assert_eq!(
-            output.pop(),
-            Some(PomoMessage::Transition(Transition::new(
-                PomoState::Working,
-                PomoState::Break,
-            )))
-        );
         let mut t1 = SimpleTask::new("Task3".into());
         t1.complete().unwrap();
         assert_eq!(
-            output.pop(),
-            Some(PomoMessage::TaskCompleted(TaskCompleted::new(t1)))
+            output,
+            PomoMessage::Transition(Transition::new_task(
+                PomoState::Working,
+                PomoState::Break,
+                t1
+            ))
         );
-        assert!(output.is_empty());
 
         // *************
         // complete break 3
         // *************
         std::thread::sleep(Duration::from_millis(bd));
 
-        let mut output = promo.update().unwrap();
-        assert_eq!(promo.task(), None);
+        let output = pomo.update().unwrap();
+        assert_eq!(pomo.task(), None);
         // transition
         assert_eq!(
-            output.pop(),
-            Some(PomoMessage::Transition(Transition::new(
-                PomoState::Break,
-                PomoState::Working,
-            )))
+            output,
+            PomoMessage::Transition(Transition::new(PomoState::Break, PomoState::Working,))
         );
-        assert!(output.is_empty());
 
         // *************
         // complete work 4
         // *************
         std::thread::sleep(Duration::from_millis(wd));
 
-        let mut output = promo.update().unwrap();
-        assert_eq!(promo.task(), None);
+        let output = pomo.update().unwrap();
+        assert_eq!(pomo.task(), None);
         // transition
         assert_eq!(
-            output.pop(),
-            Some(PomoMessage::Transition(Transition::new(
-                PomoState::Working,
-                PomoState::LongBreak,
-            )))
+            output,
+            PomoMessage::Transition(Transition::new(PomoState::Working, PomoState::LongBreak,))
         );
-        assert!(output.is_empty());
 
         // *************
         // complete long break 1
         // *************
         std::thread::sleep(Duration::from_millis(rd));
 
-        let mut output = promo.update().unwrap();
-        assert_eq!(promo.task(), None);
+        let output = pomo.update().unwrap();
+        assert_eq!(pomo.task(), None);
         // transition
         assert_eq!(
-            output.pop(),
-            Some(PomoMessage::Transition(Transition::new(
-                PomoState::LongBreak,
-                PomoState::Working,
-            )))
+            output,
+            PomoMessage::Transition(Transition::new(PomoState::LongBreak, PomoState::Working,))
         );
-        assert!(output.is_empty());
 
         // *************
         // complete work 5
         // *************
         std::thread::sleep(Duration::from_millis(wd));
 
-        let mut output = promo.update().unwrap();
-        assert_eq!(promo.task(), None);
+        let output = pomo.update().unwrap();
+        assert_eq!(pomo.task(), None);
         // transition
         assert_eq!(
-            output.pop(),
-            Some(PomoMessage::Transition(Transition::new(
-                PomoState::Working,
-                PomoState::Break,
-            )))
+            output,
+            PomoMessage::Transition(Transition::new(PomoState::Working, PomoState::Break,))
         );
-        assert!(output.is_empty());
 
         // *************
         // complete break 4
         // *************
         std::thread::sleep(Duration::from_millis(bd));
 
-        let mut output = promo.update().unwrap();
-        assert_eq!(promo.task(), None);
+        let output = pomo.update().unwrap();
+        assert_eq!(pomo.task(), None);
         // transition
         assert_eq!(
-            output.pop(),
-            Some(PomoMessage::Transition(Transition::new(
-                PomoState::Break,
-                PomoState::Working,
-            )))
+            output,
+            PomoMessage::Transition(Transition::new(PomoState::Break, PomoState::Working,))
         );
-        assert!(output.is_empty());
-        assert!(!promo.is_completed());
+        assert!(!pomo.is_completed());
 
         // *************
         // complete work 6
         // *************
         std::thread::sleep(Duration::from_millis(wd));
 
-        let mut output = promo.update().unwrap();
-        assert_eq!(promo.task(), None);
+        let output = pomo.update().unwrap();
+        assert_eq!(pomo.task(), None);
         // transition
         assert_eq!(
-            output.pop(),
-            Some(PomoMessage::Transition(Transition::new(
-                PomoState::Working,
-                PomoState::Completed,
-            )))
+            output,
+            PomoMessage::Transition(Transition::new(PomoState::Working, PomoState::Completed,))
         );
-        assert!(output.is_empty());
-        assert!(promo.is_completed());
+        assert!(pomo.is_completed());
+    }
+
+    #[test]
+    fn it_should_reset() {
+        let mut pomo = SimplePomo::<SimpleTask, InstantTimer>::default();
+        pomo.tasks.push(SimpleTask::new("Test"));
+        assert!(!pomo.tasks.is_empty());
+        pomo.reset().unwrap();
+        assert!(pomo.tasks.is_empty());
     }
 }
