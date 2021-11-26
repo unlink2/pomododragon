@@ -61,6 +61,7 @@ where
 {
     Transition(Transition<TTask, TError>),
     NoMessage,
+    Reset,
 }
 
 impl<TTask, TError> std::fmt::Display for PomoMessage<TTask, TError>
@@ -74,6 +75,7 @@ where
             match self {
                 Self::Transition(t) => t.to_string(),
                 Self::NoMessage => "NoMessage".into(),
+                Self::Reset => "Reset".into(),
             }
         )
     }

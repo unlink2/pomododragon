@@ -3,7 +3,7 @@ use yew::prelude::*;
 pub enum Msg {}
 
 pub struct Nav {
-    link: ComponentLink<Self>,
+    _link: ComponentLink<Self>,
 }
 
 impl Component for Nav {
@@ -11,10 +11,10 @@ impl Component for Nav {
     type Properties = ();
 
     fn create(_props: Self::Properties, link: ComponentLink<Self>) -> Self {
-        Self { link }
+        Self { _link: link }
     }
 
-    fn update(&mut self, msg: Self::Message) -> ShouldRender {
+    fn update(&mut self, _msg: Self::Message) -> ShouldRender {
         true
     }
 

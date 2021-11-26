@@ -1,8 +1,7 @@
 use crate::footer::Footer;
 use crate::nav::Nav;
 use pomododragon::{
-    InstantTimer, Pomo, PomoMessage, PomoState, SimplePomo, SimplePomoBuilder, SimpleTask, Task,
-    TaskKind, Timer,
+    InstantTimer, Pomo, PomoMessage, PomoState, SimplePomo, SimpleTask, TimeParser, Timer,
 };
 use std::time::Duration;
 use yew::prelude::*;
@@ -13,9 +12,15 @@ pub enum Msg {
     Start,
     Stop,
     Pause,
+    Resume,
     Add,
     Delete(usize),
     Update(String),
+    UpdateWorkTime(String),
+    UpdateShortBreakTime(String),
+    UpdateLongBreakTime(String),
+    UpdateUntilLongBreak(String),
+    UpdateTotalCycles(String),
     PomoMessage(PomoMessage<SimpleTask, ()>),
     Error(String),
     Tick,
@@ -27,6 +32,13 @@ pub struct App {
     link: ComponentLink<Self>,
     pomo: SimplePomo<SimpleTask, InstantTimer>,
     description_buffer: String,
+    work_time_buffer: String,
+    until_long_break_buffer: String,
+    total_cycles_buffer: String,
+    progress: String,
+    goal: String,
+    short_break_time_buffer: String,
+    long_break_time_buffer: String,
     _task: IntervalTask,
 }
 
@@ -37,16 +49,19 @@ impl Component for App {
     fn create(_props: Self::Properties, link: ComponentLink<Self>) -> Self {
         let callback = link.callback(|_| Msg::Tick);
         let task = IntervalService::spawn(Duration::from_millis(200), callback);
-        let mut pomo = SimplePomo::default();
-
-        // this actually cannot fail in this case!
-        // pause immediatly to avoid ticking
-        pomo.pause().expect("Unable to pause!");
+        let pomo = SimplePomo::default();
 
         Self {
             link,
             pomo,
             description_buffer: "".into(),
+            work_time_buffer: "25".into(),
+            short_break_time_buffer: "5".into(),
+            long_break_time_buffer: "30".into(),
+            progress: "0".into(),
+            goal: "100".into(),
+            until_long_break_buffer: "4".into(),
+            total_cycles_buffer: "8".into(),
             _task: task,
         }
     }
@@ -55,7 +70,19 @@ impl Component for App {
         match msg {
             Msg::Start => {
                 // TODO don't unwrap!
+                self.pomo.start().expect("Unable to unpause");
+                true
+            }
+            Msg::Pause => {
+                self.pomo.pause().expect("Unable to pause");
+                true
+            }
+            Msg::Resume => {
                 self.pomo.unpause().expect("Unable to unpause");
+                true
+            }
+            Msg::Stop => {
+                self.pomo.reset().expect("Reset failed");
                 true
             }
             Msg::Add => {
@@ -75,16 +102,61 @@ impl Component for App {
                 self.description_buffer = value;
                 true
             }
+            Msg::UpdateWorkTime(value) => {
+                self.work_time_buffer = value;
+                self.pomo.work_timer = InstantTimer::new(
+                    TimeParser::parse(&format!("{}m", self.work_time_buffer))
+                        .unwrap_or(Duration::from_secs(0)),
+                );
+
+                true
+            }
+            Msg::UpdateShortBreakTime(value) => {
+                self.short_break_time_buffer = value;
+                self.pomo.break_timer = InstantTimer::new(
+                    TimeParser::parse(&format!("{}m", self.short_break_time_buffer))
+                        .unwrap_or(Duration::from_secs(0)),
+                );
+                true
+            }
+            Msg::UpdateLongBreakTime(value) => {
+                self.long_break_time_buffer = value;
+                self.pomo.long_break_timer = InstantTimer::new(
+                    TimeParser::parse(&format!("{}m", self.long_break_time_buffer))
+                        .unwrap_or(Duration::from_secs(0)),
+                );
+                true
+            }
+            Msg::UpdateUntilLongBreak(value) => {
+                self.until_long_break_buffer = value;
+                self.pomo.cycles_until_long_break =
+                    usize::from_str_radix(&self.total_cycles_buffer, 10).unwrap_or(8);
+                true
+            }
+            Msg::UpdateTotalCycles(value) => {
+                self.total_cycles_buffer = value;
+                self.pomo.total_cycles =
+                    usize::from_str_radix(&self.total_cycles_buffer, 10).unwrap_or(8);
+                true
+            }
             Msg::Error(msg) => {
                 log::error!("{}", msg);
                 true
             }
             Msg::PomoMessage(_message) => true,
             Msg::Tick => match self.pomo.update() {
-                Ok(message) => self.update(Msg::PomoMessage(message)),
+                Ok(message) => {
+                    if let Some(timer) = self.pomo.timer() {
+                        self.progress = format!(
+                            "{}",
+                            timer.elapsed().unwrap_or(Duration::from_secs(0)).as_secs()
+                        );
+                        self.goal = format!("{}", timer.goal().as_secs());
+                    }
+                    self.update(Msg::PomoMessage(message))
+                }
                 Err(_) => self.update(Msg::Error("Unable to update!".into())),
             },
-            _ => false,
         }
     }
 
@@ -149,7 +221,11 @@ impl App {
                             }
                         }
                     </div>
-                    <progress class="progress is-primary is-large" value="10" max="100"></progress>
+                    <progress
+                        class="progress is-primary is-large"
+                        value=self.progress.clone()
+                        max=self.goal.clone()>
+                    </progress>
                 </div>
                 { self.view_controls() }
             </div>
@@ -163,7 +239,7 @@ impl App {
                 html! {
                     <button
                         class="button is-primary card-footer-item"
-                        onclick=self.link.callback(|_| Msg::Start)>
+                        onclick=self.link.callback(|_| Msg::Stop)>
                         { "Stop" }
                     </button>
                 }
@@ -179,15 +255,31 @@ impl App {
         }
     }
 
+    fn view_pause_resume(&self) -> Html {
+        if self.pomo.is_paused() {
+            html! {
+                <button
+                    class="button is-primary card-footer-item"
+                    onclick=self.link.callback(|_| Msg::Resume)>
+                    { "Resume" }
+                </button>
+            }
+        } else {
+            html! {
+                <button
+                    class="button is-primary card-footer-item"
+                    onclick=self.link.callback(|_| Msg::Pause)>
+                    { "Pause" }
+                </button>
+            }
+        }
+    }
+
     fn view_controls(&self) -> Html {
         html! {
             <div class="card-footer">
                 { self.view_start_stop() }
-                <button
-                 class="button is-primary card-footer-item"
-                 onclick=self.link.callback(|_| Msg::Start)>
-                     { "Pause" }
-                </button>
+                { self.view_pause_resume() }
             </div>
         }
     }
@@ -197,17 +289,51 @@ impl App {
             <div class="content">
                 <article class="content">
                     <label>
-                        { "Work time" }
-                        <input min="0" class="input card-footer-item" type="number" />
+                        { "Work" }
+                        <input
+                            value=self.work_time_buffer.clone()
+                            oninput=self.link.callback(|e: InputData| Msg::UpdateWorkTime(e.value))
+                            min="0"
+                            class="input card-footer-item"
+                            type="number" />
                     </label>
                     <label>
-                        { "Break time" }
-                        <input min="0" class="input card-footer-item" type="number" />
+                        { "Short Break" }
+                        <input
+                            value=self.short_break_time_buffer.clone()
+                            oninput=self.link.callback(|e: InputData| Msg::UpdateShortBreakTime(e.value))
+                            min="0"
+                            class="input card-footer-item"
+                            type="number" />
                     </label>
 
                     <label>
                         { "Long Break" }
-                        <input min="0" class="input card-footer-item" type="number" />
+                        <input
+                            value=self.long_break_time_buffer.clone()
+                            oninput=self.link.callback(|e: InputData| Msg::UpdateLongBreakTime(e.value))
+                            min="0"
+                            class="input card-footer-item"
+                            type="number" />
+                    </label>
+
+                    <label>
+                        { "Cycles Until Long Break" }
+                        <input
+                            value=self.until_long_break_buffer.clone()
+                            oninput=self.link.callback(|e: InputData| Msg::UpdateUntilLongBreak(e.value))
+                            min="0"
+                            class="input card-footer-item"
+                            type="number" />
+                    </label>
+                    <label>
+                        { "Total Cycles" }
+                        <input
+                            value=self.total_cycles_buffer.clone()
+                            oninput=self.link.callback(|e: InputData| Msg::UpdateTotalCycles(e.value))
+                            min="0"
+                            class="input card-footer-item"
+                            type="number" />
                     </label>
                 </article>
                 <article class="content">

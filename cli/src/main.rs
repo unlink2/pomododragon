@@ -61,6 +61,8 @@ fn main() {
         Some(Spinner::new(&Spinners::Dots, "".into()))
     };
 
+    pomo.start().expect("Unable to start");
+
     while !pomo.is_completed() {
         pomo.update().expect("Error while processing timer");
 
@@ -68,6 +70,7 @@ fn main() {
             "Paused".into()
         } else {
             let state = match pomo.state() {
+                PomoState::Pending => "Pending",
                 PomoState::NotStarted => "Not Started",
                 PomoState::Working => "Working",
                 PomoState::Break => "Short Break",
