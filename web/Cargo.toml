@@ -14,6 +14,7 @@ path = "src/main.rs"
 [dependencies]
 pomododragon = {path = "../lib"}
 yew = "0.18"
+yew-router = "0.15.0"
 wasm-logger = "0.2"
 log = "0.4"
 instant = { version = "0.1.12", features = [ "wasm-bindgen", "inaccurate" ] }

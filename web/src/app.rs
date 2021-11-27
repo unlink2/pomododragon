@@ -1,5 +1,3 @@
-use crate::footer::Footer;
-use crate::nav::Nav;
 use pomododragon::{
     InstantTimer, Pomo, PomoMessage, PomoState, SimplePomo, SimpleTask, TimeParser, Timer,
 };
@@ -170,7 +168,6 @@ impl Component for App {
         html! {
             <section class="section">
                 <div class="container">
-                    <Nav />
                     <div>
                         {
                             self.view_timer()
@@ -182,7 +179,6 @@ impl Component for App {
                             self.view_task_list()
                         }
                     </div>
-                    <Footer />
                 </div>
             </section>
         }
@@ -194,7 +190,7 @@ impl App {
         if let Some(timer) = self.pomo.timer() {
             timer.elapsed() != None
         } else {
-            false || self.pomo.is_paused()
+            self.pomo.is_paused()
         }
     }
 
