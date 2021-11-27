@@ -14,15 +14,37 @@
 
 ## Installation
 
+### CLI
+
 This program requires the latest version of Rust.
-To install minutecat-cli simplt clone the repository and run:
+To install pomododragon-cli simply clone the repository and run:
 
 ```sh
 cargo install --path ./cli
 ```
 
+### Web UI docker
+
+To build the web-ui in docker run
+```sh
+docker build -t pomododragon .
+```
+
 ## Usage
 
+### CLI
+
+The cli offers a simple help menu:
+```sh
+pomododragon --help
+```
+
+### Web UI docker
+
+To run the web-ui in docker use the following command:
+```sh
+docker run -it -p 3080:3080 pomododragon
+```
 
 ## License
 
@@ -35,4 +57,4 @@ Both pull requests and issue reports are always appreciated.
 Please make sure that all existing tests pass before submitting a pull request.
 
 ## TODO
-
+- Implement command patter for pomo state machine
