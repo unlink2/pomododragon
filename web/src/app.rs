@@ -190,6 +190,14 @@ impl Component for App {
 }
 
 impl App {
+    fn is_timer_running(&self) -> bool {
+        if let Some(timer) = self.pomo.timer() {
+            timer.elapsed() != None
+        } else {
+            false || self.pomo.is_paused()
+        }
+    }
+
     fn view_timer(&self) -> Html {
         html! {
             <div class="card">
@@ -297,6 +305,7 @@ impl App {
                             oninput=self.link.callback(|e: InputData| Msg::UpdateWorkTime(e.value))
                             min="0"
                             class="input card-footer-item"
+                            disabled=self.is_timer_running()
                             type="number" />
                     </label>
                     <label>
@@ -306,6 +315,7 @@ impl App {
                             oninput=self.link.callback(|e: InputData| Msg::UpdateShortBreakTime(e.value))
                             min="0"
                             class="input card-footer-item"
+                            disabled=self.is_timer_running()
                             type="number" />
                     </label>
 
@@ -316,6 +326,7 @@ impl App {
                             oninput=self.link.callback(|e: InputData| Msg::UpdateLongBreakTime(e.value))
                             min="0"
                             class="input card-footer-item"
+                            disabled=self.is_timer_running()
                             type="number" />
                     </label>
 

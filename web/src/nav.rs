@@ -55,6 +55,9 @@ impl Component for Nav {
                       <a href="/about" class="navbar-item">
                           { "About" }
                       </a>
+                    <a href="https://github.com/unlink2/pomododragon" class="navbar-item">
+                          { "Source" }
+                      </a>
                     </div>
                 </div>
             </div>
