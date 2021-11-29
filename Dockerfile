@@ -14,11 +14,13 @@ COPY . /usr/src/pomododragon
 RUN mkdir -p /usr/src/pomododragon/web/dist-libs/
 RUN git clone https://github.com/jgthms/bulma.git /usr/src/pomododragon/web/dist-libs/bulma
 
-EXPOSE 3000
+EXPOSE 3080
 
 ENV TRUNK_SERVE_ADDR=0.0.0.0
 ENV TRUNK_SERVE_PORT=3080
 ENV TRUNK_BUILD_RELEASE=true
 ENV TRUNK_BUILD_TARGET="./web/index.html"
+
+RUN trunk build
 
 CMD ["trunk", "serve"]
