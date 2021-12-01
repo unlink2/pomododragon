@@ -5,8 +5,6 @@ use pomododragon::{
 use std::time::Duration;
 use yew::prelude::*;
 use yew::services::interval::{IntervalService, IntervalTask};
-use yew::services::storage::Area;
-use yew::services::StorageService;
 use yew::InputData;
 
 // keys for local storage
@@ -185,9 +183,8 @@ impl Component for App {
                 true
             }
             Msg::PomoMessage(message) => {
-                match message {
-                    PomoMessage::Transition(_) => self.store_tasks(),
-                    _ => {}
+                if let PomoMessage::Transition(_) = message {
+                    self.store_tasks();
                 }
 
                 true
