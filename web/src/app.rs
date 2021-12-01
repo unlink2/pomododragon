@@ -1,10 +1,21 @@
+use gloo::storage::{LocalStorage, Storage};
 use pomododragon::{
     InstantTimer, Pomo, PomoMessage, PomoState, SimplePomo, SimpleTask, TimeParser, Timer,
 };
 use std::time::Duration;
 use yew::prelude::*;
 use yew::services::interval::{IntervalService, IntervalTask};
+use yew::services::storage::Area;
+use yew::services::StorageService;
 use yew::InputData;
+
+// keys for local storage
+const WORK_TIME_KEY: &str = "pomododragon.work_timer";
+const BREAK_TIME_KEY: &str = "pomododragon.break_time";
+const LONG_BREAK_TIME_KEY: &str = "pomododragon.long_break_time";
+const TOTAL_CYCLES_KEY: &str = "pomododragon.total_cycles";
+const CYCLES_UNTIL_BREAK_KEY: &str = "pomododragon.cycles_until_break";
+const TASKS_KEY: &str = "pomododragon.tasks";
 
 pub enum Msg {
     Start,
@@ -49,19 +60,35 @@ impl Component for App {
         let task = IntervalService::spawn(Duration::from_millis(200), callback);
         let pomo = SimplePomo::default();
 
-        Self {
+        let mut n = Self {
             link,
             pomo,
             description_buffer: "".into(),
-            work_time_buffer: "25".into(),
-            short_break_time_buffer: "5".into(),
-            long_break_time_buffer: "30".into(),
+            work_time_buffer: LocalStorage::get(WORK_TIME_KEY).unwrap_or_else(|_| "25".into()),
+            short_break_time_buffer: LocalStorage::get(BREAK_TIME_KEY)
+                .unwrap_or_else(|_| "5".into()),
+            long_break_time_buffer: LocalStorage::get(LONG_BREAK_TIME_KEY)
+                .unwrap_or_else(|_| "30".into()),
             progress: "0".into(),
             goal: "100".into(),
-            until_long_break_buffer: "4".into(),
-            total_cycles_buffer: "8".into(),
+            until_long_break_buffer: LocalStorage::get(CYCLES_UNTIL_BREAK_KEY)
+                .unwrap_or_else(|_| "4".into()),
+            total_cycles_buffer: LocalStorage::get(TOTAL_CYCLES_KEY).unwrap_or_else(|_| "8".into()),
             _task: task,
+        };
+
+        n.update(Msg::UpdateWorkTime(n.work_time_buffer.clone()));
+        n.update(Msg::UpdateShortBreakTime(n.short_break_time_buffer.clone()));
+        n.update(Msg::UpdateLongBreakTime(n.long_break_time_buffer.clone()));
+        n.update(Msg::UpdateTotalCycles(n.total_cycles_buffer.clone()));
+        n.update(Msg::UpdateUntilLongBreak(n.until_long_break_buffer.clone()));
+
+        let tasks: Vec<String> = LocalStorage::get(TASKS_KEY).unwrap_or_else(|_| vec![]);
+        for task in tasks {
+            n.pomo.tasks.push(SimpleTask::new(&task));
         }
+
+        n
     }
 
     fn update(&mut self, msg: Self::Message) -> ShouldRender {
@@ -88,12 +115,16 @@ impl Component for App {
                     self.pomo
                         .tasks
                         .push(SimpleTask::new(&self.description_buffer));
+
+                    self.store_tasks();
+
                     self.description_buffer = "".into();
                 }
                 true
             }
             Msg::Delete(index) => {
                 self.pomo.tasks.remove(index);
+                self.store_tasks();
                 true
             }
             Msg::Update(value) => {
@@ -101,6 +132,9 @@ impl Component for App {
                 true
             }
             Msg::UpdateWorkTime(value) => {
+                LocalStorage::set(WORK_TIME_KEY, value.clone())
+                    .expect("Unable to write to local storage!");
+
                 self.work_time_buffer = value;
                 self.pomo.work_timer = InstantTimer::new(
                     TimeParser::parse(&format!("{}m", self.work_time_buffer))
@@ -110,6 +144,9 @@ impl Component for App {
                 true
             }
             Msg::UpdateShortBreakTime(value) => {
+                LocalStorage::set(BREAK_TIME_KEY, value.clone())
+                    .expect("Unable to write to local storage!");
+
                 self.short_break_time_buffer = value;
                 self.pomo.break_timer = InstantTimer::new(
                     TimeParser::parse(&format!("{}m", self.short_break_time_buffer))
@@ -118,6 +155,9 @@ impl Component for App {
                 true
             }
             Msg::UpdateLongBreakTime(value) => {
+                LocalStorage::set(LONG_BREAK_TIME_KEY, value.clone())
+                    .expect("Unable to write to local storage!");
+
                 self.long_break_time_buffer = value;
                 self.pomo.long_break_timer = InstantTimer::new(
                     TimeParser::parse(&format!("{}m", self.long_break_time_buffer))
@@ -126,12 +166,16 @@ impl Component for App {
                 true
             }
             Msg::UpdateUntilLongBreak(value) => {
+                LocalStorage::set(CYCLES_UNTIL_BREAK_KEY, value.clone())
+                    .expect("Unable to write to local storage!");
                 self.until_long_break_buffer = value;
                 self.pomo.cycles_until_long_break =
                     self.total_cycles_buffer.parse::<usize>().unwrap_or(8);
                 true
             }
             Msg::UpdateTotalCycles(value) => {
+                LocalStorage::set(TOTAL_CYCLES_KEY, value.clone())
+                    .expect("Unable to write to local storage!");
                 self.total_cycles_buffer = value;
                 self.pomo.total_cycles = self.total_cycles_buffer.parse::<usize>().unwrap_or(8);
                 true
@@ -140,7 +184,14 @@ impl Component for App {
                 log::error!("{}", msg);
                 true
             }
-            Msg::PomoMessage(_message) => true,
+            Msg::PomoMessage(message) => {
+                match message {
+                    PomoMessage::Transition(_) => self.store_tasks(),
+                    _ => {}
+                }
+
+                true
+            }
             Msg::Tick => match self.pomo.update() {
                 Ok(message) => {
                     if let Some(timer) = self.pomo.timer() {
@@ -186,6 +237,17 @@ impl Component for App {
 }
 
 impl App {
+    fn store_tasks(&self) {
+        // collect task strings and push to local storage
+        let tasks = self
+            .pomo
+            .tasks
+            .iter()
+            .map(|x| x.to_string())
+            .collect::<Vec<_>>();
+        LocalStorage::set(TASKS_KEY, tasks).expect("Unable to store in local storage!");
+    }
+
     fn is_timer_running(&self) -> bool {
         if let Some(timer) = self.pomo.timer() {
             timer.elapsed() != None

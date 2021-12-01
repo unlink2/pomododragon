@@ -19,3 +19,4 @@ wasm-logger = "0.2"
 log = "0.4"
 instant = { version = "0.1.12", features = [ "wasm-bindgen", "inaccurate" ] }
 console_error_panic_hook = "0.1.7"
+gloo = "0.4"

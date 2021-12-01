@@ -11,6 +11,7 @@ where
     fn start(&mut self) -> Result<PomoMessage<TTask, TError>, TError>;
 
     fn reset(&mut self) -> Result<PomoMessage<TTask, TError>, TError>;
+    fn clear(&mut self) -> Result<PomoMessage<TTask, TError>, TError>;
 
     /// shoudl call output.update
     /// and output.task_compelted if a task was completed!
@@ -221,9 +222,13 @@ where
         self.current_cycles = 0;
         self.state = PomoState::default();
         self.prev_state = PomoState::default();
-        self.tasks.clear();
 
         Ok(PomoMessage::Reset)
+    }
+
+    fn clear(&mut self) -> Result<PomoMessage<TTask, ()>, ()> {
+        self.tasks.clear();
+        self.reset()
     }
 
     fn update(&mut self) -> Result<PomoMessage<TTask, ()>, ()> {
@@ -577,7 +582,7 @@ mod tests {
         let mut pomo = SimplePomo::<SimpleTask, InstantTimer>::default();
         pomo.tasks.push(SimpleTask::new("Test"));
         assert!(!pomo.tasks.is_empty());
-        pomo.reset().unwrap();
+        pomo.clear().unwrap();
         assert!(pomo.tasks.is_empty());
     }
 }
