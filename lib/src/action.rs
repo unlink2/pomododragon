@@ -61,6 +61,7 @@ where
 {
     Transition(Transition<TTask, TError>),
     NoMessage,
+    Executed,
     Reset,
 }
 
@@ -76,7 +77,18 @@ where
                 Self::Transition(t) => t.to_string(),
                 Self::NoMessage => "NoMessage".into(),
                 Self::Reset => "Reset".into(),
+                Self::Executed => "Executed".into(),
             }
         )
     }
+}
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+pub enum PomoCommand<TTask, TError>
+where
+    TTask: Task<TError>,
+{
+    AddTask(TTask),
+    RemoveTask(usize),
+    PhantomError(PhantomData<TError>),
 }

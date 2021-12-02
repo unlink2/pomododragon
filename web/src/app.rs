@@ -1,6 +1,7 @@
 use gloo::storage::{LocalStorage, Storage};
 use pomododragon::{
-    InstantTimer, Pomo, PomoMessage, PomoState, SimplePomo, SimpleTask, TimeParser, Timer,
+    Actor, InstantTimer, Pomo, PomoCommand, PomoMessage, PomoState, SimplePomo, SimpleTask,
+    TimeParser, Timer,
 };
 use std::time::Duration;
 use yew::prelude::*;
@@ -83,7 +84,9 @@ impl Component for App {
 
         let tasks: Vec<String> = LocalStorage::get(TASKS_KEY).unwrap_or_else(|_| vec![]);
         for task in tasks {
-            n.pomo.tasks.push(SimpleTask::new(&task));
+            n.pomo
+                .execute(PomoCommand::AddTask(SimpleTask::new(&task)))
+                .expect("Unabel to add task");
         }
 
         n
@@ -111,8 +114,10 @@ impl Component for App {
             Msg::Add => {
                 if !self.description_buffer.is_empty() {
                     self.pomo
-                        .tasks
-                        .push(SimpleTask::new(&self.description_buffer));
+                        .execute(PomoCommand::AddTask(SimpleTask::new(
+                            &self.description_buffer,
+                        )))
+                        .expect("Unabel to add task");
 
                     self.store_tasks();
 
@@ -121,7 +126,9 @@ impl Component for App {
                 true
             }
             Msg::Delete(index) => {
-                self.pomo.tasks.remove(index);
+                self.pomo
+                    .execute(PomoCommand::RemoveTask(index))
+                    .expect("Unable to remove task");
                 self.store_tasks();
                 true
             }

@@ -1,9 +1,13 @@
-use crate::{PomoMessage, Task, Timer, Transition};
+use crate::{Actor, PomoCommand, PomoMessage, Task, Timer, Transition};
 use derive_builder::*;
 
 /// Pomo is a simple state machine
 /// with a timer and an output interface
-pub trait Pomo<TTask, TTimer, TError>
+/// The main communication between the application and
+/// the pomo state machine should be done by using
+/// the actor/command interface
+pub trait Pomo<TTask, TTimer, TError>:
+    Actor<PomoCommand<TTask, TError>, Result<PomoMessage<TTask, TError>, TError>>
 where
     TTask: Task<TError>,
     TTimer: Timer<TError>,
@@ -206,6 +210,26 @@ where
         };
 
         Ok(msg)
+    }
+}
+
+impl<TTask, TTimer> Actor<PomoCommand<TTask, ()>, Result<PomoMessage<TTask, ()>, ()>>
+    for SimplePomo<TTask, TTimer>
+where
+    TTask: Task<()>,
+    TTimer: Timer<()>,
+{
+    fn execute(&mut self, command: PomoCommand<TTask, ()>) -> Result<PomoMessage<TTask, ()>, ()> {
+        match command {
+            PomoCommand::AddTask(task) => {
+                self.tasks.push(task);
+            }
+            PomoCommand::RemoveTask(index) => {
+                self.tasks.remove(index);
+            }
+            _ => {}
+        }
+        Ok(PomoMessage::Executed)
     }
 }
 
@@ -584,5 +608,43 @@ mod tests {
         assert!(!pomo.tasks.is_empty());
         pomo.clear().unwrap();
         assert!(pomo.tasks.is_empty());
+    }
+
+    #[test]
+    fn it_should_add_tasks() {
+        let mut pomo = SimplePomo::<SimpleTask, InstantTimer>::default();
+        assert_eq!(pomo.tasks.len(), 0);
+        assert_eq!(
+            pomo.execute(PomoCommand::AddTask(SimpleTask::new("Test"))),
+            Ok(PomoMessage::Executed)
+        );
+        assert_eq!(pomo.tasks.len(), 1);
+    }
+
+    #[test]
+    fn it_should_remove_tasks() {
+        let mut pomo = SimplePomo::<SimpleTask, InstantTimer>::default();
+        assert_eq!(pomo.tasks.len(), 0);
+        assert_eq!(
+            pomo.execute(PomoCommand::AddTask(SimpleTask::new("Test1"))),
+            Ok(PomoMessage::Executed)
+        );
+        assert_eq!(
+            pomo.execute(PomoCommand::AddTask(SimpleTask::new("Test2"))),
+            Ok(PomoMessage::Executed)
+        );
+        assert_eq!(
+            pomo.execute(PomoCommand::AddTask(SimpleTask::new("Test3"))),
+            Ok(PomoMessage::Executed)
+        );
+        assert_eq!(pomo.tasks.len(), 3);
+        assert_eq!(
+            pomo.execute(PomoCommand::RemoveTask(1)),
+            Ok(PomoMessage::Executed)
+        );
+        assert_eq!(
+            pomo.tasks,
+            vec![SimpleTask::new("Test1"), SimpleTask::new("Test3")]
+        );
     }
 }
