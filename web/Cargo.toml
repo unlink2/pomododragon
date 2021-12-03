@@ -13,7 +13,7 @@ path = "src/main.rs"
 
 [dependencies]
 pomododragon = {path = "../lib"}
-yew = "0.18"
+yew = "0.18.0"
 yew-router = "0.15.0"
 wasm-logger = "0.2"
 log = "0.4"

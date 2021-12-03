@@ -3,6 +3,7 @@ mod app;
 mod footer;
 mod nav;
 mod notfound;
+mod numberinput;
 mod router;
 use app::App;
 use router::AppRouter;
