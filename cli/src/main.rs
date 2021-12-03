@@ -3,9 +3,7 @@ use spinners::{Spinner, Spinners};
 use std::thread;
 use std::time::Duration;
 
-use pomododragon::{
-    InstantTimer, Pomo, PomoState, SimplePomoBuilder, SimpleTask, TimeParser, Timer,
-};
+use pomododragon::{InstantTimer, Pomo, SimplePomoBuilder, SimpleTask, TimeParser, Timer};
 
 #[derive(Parser)]
 #[clap(version = "0.1.0", author = "Lukas Krickl <lukas@krickl.dev>")]
@@ -69,15 +67,7 @@ fn main() {
         let message = if pomo.is_paused() {
             "Paused".into()
         } else {
-            let state = match pomo.state() {
-                PomoState::Pending => "Pending",
-                PomoState::NotStarted => "Not Started",
-                PomoState::Working => "Working",
-                PomoState::Break => "Short Break",
-                PomoState::LongBreak => "Long Break",
-                PomoState::Paused => "Paused",
-                PomoState::Completed => "Completed",
-            };
+            let state = pomo.state().to_string();
 
             let task = match pomo.task() {
                 Some(task) => task.to_string(),
