@@ -3,7 +3,9 @@ use spinners::{Spinner, Spinners};
 use std::thread;
 use std::time::Duration;
 
-use pomododragon::{InstantTimer, Pomo, SimplePomoBuilder, SimpleTask, TimeParser, Timer};
+use pomododragon::{
+    Actor, InstantTimer, Pomo, PomoCommand, SimplePomoBuilder, SimpleTask, TimeParser, Timer,
+};
 
 #[derive(Parser)]
 #[clap(version = "0.1.0", author = "Lukas Krickl <lukas@krickl.dev>")]
@@ -59,10 +61,11 @@ fn main() {
         Some(Spinner::new(&Spinners::Dots, "".into()))
     };
 
-    pomo.start().expect("Unable to start");
+    pomo.execute(PomoCommand::Start).expect("Unable to start");
 
     while !pomo.is_completed() {
-        pomo.update().expect("Error while processing timer");
+        pomo.execute(PomoCommand::Update)
+            .expect("Error while processing timer");
 
         let message = if pomo.is_paused() {
             "Paused".into()

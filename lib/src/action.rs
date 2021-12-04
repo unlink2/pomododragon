@@ -90,5 +90,12 @@ where
 {
     AddTask(TTask),
     RemoveTask(usize),
+    Start,
+    Reset,
+    Pause,
+    Unpause,
+    TogglePause,
+    Update,
+    Clear,
     PhantomError(PhantomData<TError>),
 }

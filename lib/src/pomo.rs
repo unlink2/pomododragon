@@ -223,13 +223,21 @@ where
         match command {
             PomoCommand::AddTask(task) => {
                 self.tasks.push(task);
+                Ok(PomoMessage::Executed)
             }
             PomoCommand::RemoveTask(index) => {
                 self.tasks.remove(index);
+                Ok(PomoMessage::Executed)
             }
-            _ => {}
+            PomoCommand::Start => self.start(),
+            PomoCommand::Pause => self.pause(),
+            PomoCommand::Unpause => self.unpause(),
+            PomoCommand::TogglePause => self.toggle_pause(),
+            PomoCommand::Reset => self.reset(),
+            PomoCommand::Update => self.update(),
+            PomoCommand::Clear => self.clear(),
+            _ => Ok(PomoMessage::Executed),
         }
-        Ok(PomoMessage::Executed)
     }
 }
 
