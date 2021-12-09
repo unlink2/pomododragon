@@ -17,6 +17,9 @@ pub struct NumberInputProps {
 
     #[prop_or_default]
     pub disabled: bool,
+
+    #[prop_or_default]
+    pub oninput: Callback<InputData>,
 }
 
 pub struct NumberInput {
@@ -36,14 +39,24 @@ impl Component for NumberInput {
         true
     }
 
-    fn change(&mut self, _props: Self::Properties) -> ShouldRender {
-        false
+    fn change(&mut self, props: Self::Properties) -> ShouldRender {
+        self.props = props;
+        true
     }
 
     fn view(&self) -> Html {
         html! {
             <div>
                 { self.props.label.clone() }
+                <p>
+                    <input
+                        value=self.props.value.clone()
+                        min=self.props.min.to_string()
+                        class="input card-footer-item"
+                        disabled=self.props.disabled
+                        oninput=self.props.oninput.clone()
+                        type="number" />
+                </p>
             </div>
         }
     }

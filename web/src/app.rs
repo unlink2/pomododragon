@@ -1,3 +1,4 @@
+use crate::numberinput::NumberInput;
 use gloo::storage::{LocalStorage, Storage};
 use pomododragon::{
     Actor, InstantTimer, Pomo, PomoCommand, PomoMessage, PomoState, SimplePomo, SimpleTask,
@@ -361,54 +362,45 @@ impl App {
             <div class="content">
                 <article class="content">
                     <label>
-                        { "Work" }
-                        <input
+                        <NumberInput
                             value=self.work_time_buffer.clone()
                             oninput=self.link.callback(|e: InputData| Msg::UpdateWorkTime(e.value))
-                            min="0"
-                            class="input card-footer-item"
+                            min={1}
                             disabled=self.is_timer_running()
-                            type="number" />
+                            label="Work"
+                        />
                     </label>
                     <label>
-                        { "Short Break" }
-                        <input
+                        <NumberInput
                             value=self.short_break_time_buffer.clone()
                             oninput=self.link.callback(|e: InputData| Msg::UpdateShortBreakTime(e.value))
-                            min="0"
-                            class="input card-footer-item"
+                            min={1}
                             disabled=self.is_timer_running()
-                            type="number" />
+                            label="Short Break" />
                     </label>
 
                     <label>
-                        { "Long Break" }
-                        <input
+                        <NumberInput
                             value=self.long_break_time_buffer.clone()
                             oninput=self.link.callback(|e: InputData| Msg::UpdateLongBreakTime(e.value))
-                            min="0"
-                            class="input card-footer-item"
+                            min={1}
                             disabled=self.is_timer_running()
-                            type="number" />
+                            label="Long Break" />
                     </label>
 
                     <label>
-                        { "Cycles Until Long Break" }
-                        <input
+                        <NumberInput
                             value=self.until_long_break_buffer.clone()
                             oninput=self.link.callback(|e: InputData| Msg::UpdateUntilLongBreak(e.value))
-                            min="0"
-                            class="input card-footer-item"
-                            type="number" />
+                            min={1}
+                            label="Cycles Until Long Break" />
                     </label>
                     <label>
-                        { "Total Cycles" }
-                        <input
+                        <NumberInput
                             value=self.total_cycles_buffer.clone()
                             oninput=self.link.callback(|e: InputData| Msg::UpdateTotalCycles(e.value))
-                            min="0"
-                            class="input card-footer-item"
-                            type="number" />
+                            min={1}
+                            label="Total Cycles" />
                     </label>
                 </article>
                 <article class="content">
