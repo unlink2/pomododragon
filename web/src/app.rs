@@ -1,3 +1,4 @@
+use crate::error::Error;
 use crate::numberinput::NumberInput;
 use gloo::storage::{LocalStorage, Storage};
 use pomododragon::{
@@ -31,7 +32,8 @@ pub enum Msg {
     UpdateUntilLongBreak(String),
     UpdateTotalCycles(String),
     PomoMessage(PomoMessage<SimpleTask, ()>),
-    Error(String),
+    SkipTo(PomoState),
+    Error(Error),
     Tick,
 }
 
@@ -85,9 +87,10 @@ impl Component for App {
 
         let tasks: Vec<String> = LocalStorage::get(TASKS_KEY).unwrap_or_else(|_| vec![]);
         for task in tasks {
+            // this usually will not fail!
             n.pomo
                 .execute(PomoCommand::AddTask(SimpleTask::new(&task)))
-                .expect("Unabel to add task");
+                .expect("AddTaskFailed");
         }
 
         n
@@ -97,28 +100,36 @@ impl Component for App {
         match msg {
             Msg::Start => {
                 // TODO don't unwrap!
-                self.pomo.start().expect("Unable to unpause");
+                if let Err(_) = self.pomo.start() {
+                    self.update(Msg::Error(Error::StartFailed));
+                }
                 true
             }
             Msg::Pause => {
-                self.pomo.pause().expect("Unable to pause");
+                if let Err(_) = self.pomo.pause() {
+                    self.update(Msg::Error(Error::PauseFailed));
+                }
                 true
             }
             Msg::Resume => {
-                self.pomo.unpause().expect("Unable to unpause");
+                if let Err(_) = self.pomo.unpause() {
+                    self.update(Msg::Error(Error::UnpauseFailed));
+                }
                 true
             }
             Msg::Stop => {
-                self.pomo.reset().expect("Reset failed");
+                if let Err(_) = self.pomo.reset() {
+                    self.update(Msg::Error(Error::ResetFailed));
+                }
                 true
             }
             Msg::Add => {
                 if !self.description_buffer.is_empty() {
-                    self.pomo
-                        .execute(PomoCommand::AddTask(SimpleTask::new(
-                            &self.description_buffer,
-                        )))
-                        .expect("Unabel to add task");
+                    if let Err(_) = self.pomo.execute(PomoCommand::AddTask(SimpleTask::new(
+                        &self.description_buffer,
+                    ))) {
+                        self.update(Msg::Error(Error::AddTaskFailed));
+                    }
 
                     self.store_tasks();
 
@@ -127,9 +138,9 @@ impl Component for App {
                 true
             }
             Msg::Delete(index) => {
-                self.pomo
-                    .execute(PomoCommand::RemoveTask(index))
-                    .expect("Unable to remove task");
+                if let Err(_) = self.pomo.execute(PomoCommand::RemoveTask(index)) {
+                    self.update(Msg::Error(Error::LocalStorageWriteFailed));
+                }
                 self.store_tasks();
                 true
             }
@@ -138,8 +149,9 @@ impl Component for App {
                 true
             }
             Msg::UpdateWorkTime(value) => {
-                LocalStorage::set(WORK_TIME_KEY, value.clone())
-                    .expect("Unable to write to local storage!");
+                if let Err(_) = LocalStorage::set(WORK_TIME_KEY, value.clone()) {
+                    self.update(Msg::Error(Error::LocalStorageWriteFailed));
+                }
 
                 self.work_time_buffer = value;
                 self.pomo.work_timer = InstantTimer::new(
@@ -150,8 +162,9 @@ impl Component for App {
                 true
             }
             Msg::UpdateShortBreakTime(value) => {
-                LocalStorage::set(BREAK_TIME_KEY, value.clone())
-                    .expect("Unable to write to local storage!");
+                if let Err(_) = LocalStorage::set(BREAK_TIME_KEY, value.clone()) {
+                    self.update(Msg::Error(Error::LocalStorageWriteFailed));
+                }
 
                 self.short_break_time_buffer = value;
                 self.pomo.break_timer = InstantTimer::new(
@@ -161,8 +174,9 @@ impl Component for App {
                 true
             }
             Msg::UpdateLongBreakTime(value) => {
-                LocalStorage::set(LONG_BREAK_TIME_KEY, value.clone())
-                    .expect("Unable to write to local storage!");
+                if let Err(_) = LocalStorage::set(LONG_BREAK_TIME_KEY, value.clone()) {
+                    self.update(Msg::Update("LocalStorageWriteFailed".into()));
+                }
 
                 self.long_break_time_buffer = value;
                 self.pomo.long_break_timer = InstantTimer::new(
@@ -172,16 +186,18 @@ impl Component for App {
                 true
             }
             Msg::UpdateUntilLongBreak(value) => {
-                LocalStorage::set(CYCLES_UNTIL_BREAK_KEY, value.clone())
-                    .expect("Unable to write to local storage!");
+                if let Err(_) = LocalStorage::set(CYCLES_UNTIL_BREAK_KEY, value.clone()) {
+                    self.update(Msg::Error(Error::LocalStorageWriteFailed));
+                }
                 self.until_long_break_buffer = value;
                 self.pomo.cycles_until_long_break =
                     self.total_cycles_buffer.parse::<usize>().unwrap_or(8);
                 true
             }
             Msg::UpdateTotalCycles(value) => {
-                LocalStorage::set(TOTAL_CYCLES_KEY, value.clone())
-                    .expect("Unable to write to local storage!");
+                if let Err(_) = LocalStorage::set(TOTAL_CYCLES_KEY, value.clone()) {
+                    self.update(Msg::Error(Error::LocalStorageWriteFailed));
+                }
                 self.total_cycles_buffer = value;
                 self.pomo.total_cycles = self.total_cycles_buffer.parse::<usize>().unwrap_or(8);
                 true
@@ -195,6 +211,12 @@ impl Component for App {
                     self.store_tasks();
                 }
 
+                true
+            }
+            Msg::SkipTo(state) => {
+                if let Err(_) = self.pomo.skip_to(state) {
+                    self.update(Msg::Error(Error::UpdateFailed));
+                }
                 true
             }
             Msg::Tick => match self.pomo.update() {
@@ -211,7 +233,7 @@ impl Component for App {
                     }
                     self.update(Msg::PomoMessage(message))
                 }
-                Err(_) => self.update(Msg::Error("Unable to update!".into())),
+                Err(_) => self.update(Msg::Error(Error::UpdateFailed)),
             },
         }
     }
@@ -242,7 +264,7 @@ impl Component for App {
 }
 
 impl App {
-    fn store_tasks(&self) {
+    fn store_tasks(&mut self) {
         // collect task strings and push to local storage
         let tasks = self
             .pomo
@@ -250,7 +272,9 @@ impl App {
             .iter()
             .map(|x| x.to_string())
             .collect::<Vec<_>>();
-        LocalStorage::set(TASKS_KEY, tasks).expect("Unable to store in local storage!");
+        if let Err(_) = LocalStorage::set(TASKS_KEY, tasks) {
+            self.update(Msg::Error(Error::LocalStorageWriteFailed));
+        }
     }
 
     fn is_timer_running(&self) -> bool {
@@ -301,6 +325,7 @@ impl App {
                     </progress>
                 </div>
                 { self.view_controls() }
+                { self.view_state_skips() }
             </div>
         }
     }
@@ -308,10 +333,11 @@ impl App {
     fn view_start_stop(&self) -> Html {
         {
             // change start/stop buttom depending on the state
-            if self.pomo.state() == PomoState::Working {
+            if self.pomo.state() != PomoState::NotStarted {
                 html! {
                     <button
                         class="button is-primary card-footer-item"
+                        disabled={ self.pomo.is_paused() }
                         onclick=self.link.callback(|_| Msg::Stop)>
                         { "Stop" }
                     </button>
@@ -320,6 +346,7 @@ impl App {
                 html! {
                     <button
                         class="button is-primary card-footer-item"
+                        disabled={ self.pomo.is_paused() }
                         onclick=self.link.callback(|_| Msg::Start)>
                         { "Start" }
                     </button>
@@ -333,6 +360,7 @@ impl App {
             html! {
                 <button
                     class="button is-primary card-footer-item"
+                    disabled={ self.pomo.state() == PomoState::NotStarted }
                     onclick=self.link.callback(|_| Msg::Resume)>
                     { "Resume" }
                 </button>
@@ -341,6 +369,7 @@ impl App {
             html! {
                 <button
                     class="button is-primary card-footer-item"
+                    disabled={ self.pomo.state() == PomoState::NotStarted }
                     onclick=self.link.callback(|_| Msg::Pause)>
                     { "Pause" }
                 </button>
@@ -354,6 +383,27 @@ impl App {
                 { self.view_start_stop() }
                 { self.view_pause_resume() }
             </div>
+        }
+    }
+
+    fn view_state_skips(&self) -> Html {
+        html! {
+            <div class="card-footer">
+                { self.view_skip_state("Working", PomoState::Working) }
+                { self.view_skip_state("Break", PomoState::Break) }
+                { self.view_skip_state("Long Break", PomoState::LongBreak) }
+            </div>
+        }
+    }
+
+    fn view_skip_state(&self, label: &str, state: PomoState) -> Html {
+        html! {
+            <button
+                class="button is-primary card-footer-item"
+                disabled={ self.pomo.state() == PomoState::NotStarted }
+                onclick=self.link.callback(move |_| Msg::SkipTo(state))>
+                { label }
+            </button>
         }
     }
 

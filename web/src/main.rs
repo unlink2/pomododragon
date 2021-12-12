@@ -1,5 +1,6 @@
 mod about;
 mod app;
+mod error;
 mod footer;
 mod nav;
 mod notfound;

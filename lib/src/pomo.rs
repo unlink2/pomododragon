@@ -39,6 +39,9 @@ where
     fn pause(&mut self) -> Result<PomoMessage<TTask, TError>, TError>;
     fn unpause(&mut self) -> Result<PomoMessage<TTask, TError>, TError>;
 
+    /// Stops all timers, skips to new state and starts apropriate timers
+    fn skip_to(&mut self, state: PomoState) -> Result<PomoMessage<TTask, TError>, TError>;
+
     fn is_paused(&self) -> bool {
         self.state() == PomoState::Paused
     }
@@ -174,11 +177,9 @@ where
                 // DONE!
                 self.set_state(PomoState::Completed)?
             } else if self.current_cycles % self.cycles_until_long_break == 0 {
-                self.long_break_timer.reset()?;
-                self.set_state(PomoState::LongBreak)?
+                self.skip_to(PomoState::LongBreak)?
             } else {
-                self.break_timer.reset()?;
-                self.set_state(PomoState::Break)?
+                self.skip_to(PomoState::Break)?
             };
             // if we did transition, set the completed task
             if let PomoMessage::Transition(transition) = &mut msg {
@@ -193,8 +194,7 @@ where
 
     fn update_break(&mut self) -> Result<PomoMessage<TTask, ()>, ()> {
         let msg = if self.break_timer.is_completed() {
-            self.work_timer.reset()?;
-            self.set_state(PomoState::Working)?
+            self.skip_to(PomoState::Working)?
         } else {
             PomoMessage::NoMessage
         };
@@ -203,8 +203,7 @@ where
 
     fn update_long_break(&mut self) -> Result<PomoMessage<TTask, ()>, ()> {
         let msg = if self.long_break_timer.is_completed() {
-            self.work_timer.start()?;
-            self.set_state(PomoState::Working)?
+            self.skip_to(PomoState::Working)?
         } else {
             PomoMessage::NoMessage
         };
@@ -276,6 +275,20 @@ where
             PomoState::LongBreak => self.update_long_break()?,
             PomoState::Paused | PomoState::Completed => PomoMessage::NoMessage,
         })
+    }
+
+    fn skip_to(&mut self, state: PomoState) -> Result<PomoMessage<TTask, ()>, ()> {
+        self.work_timer.reset()?;
+        self.break_timer.reset()?;
+        self.long_break_timer.reset()?;
+
+        match state {
+            PomoState::Working => self.work_timer.start(),
+            PomoState::Break => self.break_timer.start(),
+            PomoState::LongBreak => self.long_break_timer.start(),
+            _ => Ok(()),
+        }?;
+        self.set_state(state)
     }
 
     /// Should call output.state_changed!
