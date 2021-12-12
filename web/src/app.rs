@@ -57,6 +57,7 @@ pub struct App {
 
 #[derive(PartialEq, Eq)]
 pub enum TabState {
+    Timer,
     Tasks,
     Settings,
 }
@@ -85,7 +86,7 @@ impl Component for App {
                 .unwrap_or_else(|_| "4".into()),
             total_cycles_buffer: LocalStorage::get(TOTAL_CYCLES_KEY).unwrap_or_else(|_| "8".into()),
             _task: task,
-            state: TabState::Tasks,
+            state: TabState::Timer,
         };
 
         n.update(Msg::UpdateWorkTime(n.work_time_buffer.clone()));
@@ -263,31 +264,19 @@ impl Component for App {
             <section class="section">
                 <div class="container">
                     <div>
-                        {
-                            self.view_timer()
-                        }
                         <div class="tabs">
                             <ul>
-                                <li class=
-                                {
-                                    if self.state == TabState::Tasks {
-                                            "is-active"
-                                    } else {
-                                        ""
-                                    }
-                                }>
+                                <li class={self.get_tab_active(TabState::Timer)}>
+                                    <a onclick=self.link.callback(|_| Msg::SetTab(TabState::Timer))>
+                                        { "Tasks" }
+                                    </a>
+                                </li>
+                                <li class={self.get_tab_active(TabState::Tasks)}>
                                     <a onclick=self.link.callback(|_| Msg::SetTab(TabState::Tasks))>
                                         { "Tasks" }
                                     </a>
                                 </li>
-                                <li class=
-                                {
-                                    if self.state == TabState::Settings {
-                                            "is-active"
-                                    } else {
-                                        ""
-                                    }
-                                }>
+                                <li class={self.get_tab_active(TabState::Settings)}>
                                     <a onclick=self.link.callback(|_| Msg::SetTab(TabState::Settings))>
                                         { "Settings" }
                                     </a>
@@ -295,10 +284,10 @@ impl Component for App {
                             </ul>
                         </div>
                         {
-                            if self.state == TabState::Settings {
-                                self.view_settings()
-                            } else {
-                                self.view_task_list()
+                            match self.state {
+                                TabState::Settings => self.view_settings(),
+                                TabState::Tasks => self.view_task_list(),
+                                _ => self.view_timer()
                             }
                         }
                     </div>
@@ -309,6 +298,14 @@ impl Component for App {
 }
 
 impl App {
+    fn get_tab_active(&self, state: TabState) -> String {
+        if state == self.state {
+            "is-active".into()
+        } else {
+            "".into()
+        }
+    }
+
     fn store_tasks(&mut self) {
         // collect task strings and push to local storage
         let tasks = self
