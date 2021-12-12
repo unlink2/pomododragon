@@ -34,6 +34,7 @@ pub enum Msg {
     PomoMessage(PomoMessage<SimpleTask, ()>),
     SkipTo(PomoState),
     Error(Error),
+    SetTab(TabState),
     Tick,
 }
 
@@ -50,7 +51,14 @@ pub struct App {
     goal: String,
     short_break_time_buffer: String,
     long_break_time_buffer: String,
+    state: TabState,
     _task: IntervalTask,
+}
+
+#[derive(PartialEq, Eq)]
+pub enum TabState {
+    Tasks,
+    Settings,
 }
 
 impl Component for App {
@@ -77,6 +85,7 @@ impl Component for App {
                 .unwrap_or_else(|_| "4".into()),
             total_cycles_buffer: LocalStorage::get(TOTAL_CYCLES_KEY).unwrap_or_else(|_| "8".into()),
             _task: task,
+            state: TabState::Tasks,
         };
 
         n.update(Msg::UpdateWorkTime(n.work_time_buffer.clone()));
@@ -216,6 +225,10 @@ impl Component for App {
 
                 true
             }
+            Msg::SetTab(tab) => {
+                self.state = tab;
+                true
+            }
             Msg::SkipTo(state) => {
                 if self.pomo.skip_to(state).is_err() {
                     self.update(Msg::Error(Error::Update));
@@ -253,11 +266,40 @@ impl Component for App {
                         {
                             self.view_timer()
                         }
+                        <div class="tabs">
+                            <ul>
+                                <li class=
+                                {
+                                    if self.state == TabState::Tasks {
+                                            "is-active"
+                                    } else {
+                                        ""
+                                    }
+                                }>
+                                    <a onclick=self.link.callback(|_| Msg::SetTab(TabState::Tasks))>
+                                        { "Tasks" }
+                                    </a>
+                                </li>
+                                <li class=
+                                {
+                                    if self.state == TabState::Settings {
+                                            "is-active"
+                                    } else {
+                                        ""
+                                    }
+                                }>
+                                    <a onclick=self.link.callback(|_| Msg::SetTab(TabState::Settings))>
+                                        { "Settings" }
+                                    </a>
+                                </li>
+                            </ul>
+                        </div>
                         {
-                            self.view_settings()
-                        }
-                        {
-                            self.view_task_list()
+                            if self.state == TabState::Settings {
+                                self.view_settings()
+                            } else {
+                                self.view_task_list()
+                            }
                         }
                     </div>
                 </div>
@@ -290,13 +332,13 @@ impl App {
 
     fn view_timer(&self) -> Html {
         html! {
-            <div class="card">
-                <div class="card-header">
-                    <div class="card-header-title title">
+            <div class="container box is-primary">
+                <div class="">
+                    <div class="title">
                         { self.pomo.state() }
                     </div>
                 </div>
-                <div class="card-content">
+                <div class="">
                     <div class="content title">
                         {
                             if let Some(task) = self.pomo.task() {
@@ -339,7 +381,7 @@ impl App {
             if self.pomo.state() != PomoState::NotStarted {
                 html! {
                     <button
-                        class="button is-primary card-footer-item"
+                        class="button is-warning"
                         disabled={ self.pomo.is_paused() }
                         onclick=self.link.callback(|_| Msg::Stop)>
                         { "Stop" }
@@ -348,7 +390,7 @@ impl App {
             } else {
                 html! {
                     <button
-                        class="button is-primary card-footer-item"
+                        class="button is-primary"
                         disabled={ self.pomo.is_paused() }
                         onclick=self.link.callback(|_| Msg::Start)>
                         { "Start" }
@@ -362,7 +404,7 @@ impl App {
         if self.pomo.is_paused() {
             html! {
                 <button
-                    class="button is-primary card-footer-item"
+                    class="button is-info"
                     disabled={ self.pomo.state() == PomoState::NotStarted }
                     onclick=self.link.callback(|_| Msg::Resume)>
                     { "Resume" }
@@ -371,7 +413,7 @@ impl App {
         } else {
             html! {
                 <button
-                    class="button is-primary card-footer-item"
+                    class="button is-info"
                     disabled={ self.pomo.state() == PomoState::NotStarted }
                     onclick=self.link.callback(|_| Msg::Pause)>
                     { "Pause" }
@@ -382,7 +424,7 @@ impl App {
 
     fn view_controls(&self) -> Html {
         html! {
-            <div class="card-footer">
+            <div class="box">
                 { self.view_start_stop() }
                 { self.view_pause_resume() }
             </div>
@@ -391,7 +433,7 @@ impl App {
 
     fn view_state_skips(&self) -> Html {
         html! {
-            <div class="card-footer">
+            <div class="box">
                 { self.view_skip_state("Working", PomoState::Working) }
                 { self.view_skip_state("Break", PomoState::Break) }
                 { self.view_skip_state("Long Break", PomoState::LongBreak) }
@@ -402,7 +444,7 @@ impl App {
     fn view_skip_state(&self, label: &str, state: PomoState) -> Html {
         html! {
             <button
-                class="button is-primary card-footer-item"
+                class="button is-info"
                 disabled={ self.pomo.state() == PomoState::NotStarted }
                 onclick=self.link.callback(move |_| Msg::SkipTo(state))>
                 { label }
@@ -412,7 +454,7 @@ impl App {
 
     fn view_settings(&self) -> Html {
         html! {
-            <div class="content">
+            <div class="content box">
                 <article class="content">
                     <label>
                         <NumberInput
@@ -456,25 +498,6 @@ impl App {
                             label="Total Cycles" />
                     </label>
                 </article>
-                <article class="content">
-                    <div class="columns">
-                       <input
-                         class="input is-primary column is-three-quarters"
-                         type="text"
-                         placeholder="What needs to be done?"
-                         value=self.description_buffer.clone()
-                         oninput=self.link.callback(|e: InputData| Msg::Update(e.value))
-                         onkeypress=self.link.batch_callback(|e: KeyboardEvent| {
-                                 if e.key() == "Enter" { Some(Msg::Add) } else { None }
-                             })
-                        />
-                        <button
-                            class="button is-primary column"
-                            onclick=self.link.callback(|_| Msg::Add)>
-                            { "Add" }
-                        </button>
-                    </div>
-                </article>
             </div>
         }
     }
@@ -496,7 +519,26 @@ impl App {
 
     fn view_task_list(&self) -> Html {
         html! {
-            <div class="container">
+            <div class="container box">
+                <article class="content box">
+                    <div class="columns">
+                       <input
+                         class="input is-primary is-three-quarters"
+                         type="text"
+                         placeholder="What needs to be done?"
+                         value=self.description_buffer.clone()
+                         oninput=self.link.callback(|e: InputData| Msg::Update(e.value))
+                         onkeypress=self.link.batch_callback(|e: KeyboardEvent| {
+                                 if e.key() == "Enter" { Some(Msg::Add) } else { None }
+                             })
+                        />
+                        <button
+                            class="button is-info"
+                            onclick=self.link.callback(|_| Msg::Add)>
+                            { "Add" }
+                        </button>
+                    </div>
+                </article>
                 {
                     for self.pomo.tasks().iter()
                         .enumerate()

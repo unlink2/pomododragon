@@ -52,7 +52,7 @@ impl Component for NumberInput {
                     <input
                         value=self.props.value.clone()
                         min=self.props.min.to_string()
-                        class="input card-footer-item"
+                        class="input"
                         disabled=self.props.disabled
                         oninput=self.props.oninput.clone()
                         type="number" />
