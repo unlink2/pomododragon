@@ -7,7 +7,7 @@ use pomododragon::{
     Actor, InstantTimer, Pomo, PomoCommand, SimplePomoBuilder, SimpleTask, TimeParser, Timer,
 };
 
-#[derive(Parser)]
+#[derive(Parser, Debug)]
 #[clap(version = "0.1.0", author = "Lukas Krickl <lukas@krickl.dev>")]
 struct Opts {
     #[clap(short, long, default_value = "5m")]
