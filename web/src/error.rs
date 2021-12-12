@@ -2,13 +2,13 @@ use std::fmt;
 use std::fmt::Display;
 
 pub enum Error {
-    AddTaskFailed,
-    LocalStorageWriteFailed,
-    UpdateFailed,
-    PauseFailed,
-    UnpauseFailed,
-    StartFailed,
-    ResetFailed,
+    AddTask,
+    LocalStorageWrite,
+    Update,
+    Pause,
+    Unpause,
+    Start,
+    Reset,
 }
 
 impl Display for Error {
@@ -17,13 +17,13 @@ impl Display for Error {
             f,
             "{}",
             match self {
-                Self::AddTaskFailed => "AddTaskFailed",
-                Self::LocalStorageWriteFailed => "Local Storage Write Failed",
-                Self::UpdateFailed => "Updated Failed",
-                Self::PauseFailed => "Pause Failed",
-                Self::UnpauseFailed => "Unpause Failed",
-                Self::StartFailed => "Start Failed",
-                Self::ResetFailed => "Reset Failed",
+                Self::AddTask => "AddTaskFailed",
+                Self::LocalStorageWrite => "Local Storage Write Failed",
+                Self::Update => "Updated Failed",
+                Self::Pause => "Pause Failed",
+                Self::Unpause => "Unpause Failed",
+                Self::Start => "Start Failed",
+                Self::Reset => "Reset Failed",
             }
         )
     }

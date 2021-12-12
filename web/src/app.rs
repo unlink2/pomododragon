@@ -99,36 +99,39 @@ impl Component for App {
     fn update(&mut self, msg: Self::Message) -> ShouldRender {
         match msg {
             Msg::Start => {
-                // TODO don't unwrap!
-                if let Err(_) = self.pomo.start() {
-                    self.update(Msg::Error(Error::StartFailed));
+                if self.pomo.start().is_err() {
+                    self.update(Msg::Error(Error::Start));
                 }
                 true
             }
             Msg::Pause => {
-                if let Err(_) = self.pomo.pause() {
-                    self.update(Msg::Error(Error::PauseFailed));
+                if self.pomo.pause().is_err() {
+                    self.update(Msg::Error(Error::Pause));
                 }
                 true
             }
             Msg::Resume => {
-                if let Err(_) = self.pomo.unpause() {
-                    self.update(Msg::Error(Error::UnpauseFailed));
+                if self.pomo.unpause().is_err() {
+                    self.update(Msg::Error(Error::Unpause));
                 }
                 true
             }
             Msg::Stop => {
-                if let Err(_) = self.pomo.reset() {
-                    self.update(Msg::Error(Error::ResetFailed));
+                if self.pomo.reset().is_err() {
+                    self.update(Msg::Error(Error::Reset));
                 }
                 true
             }
             Msg::Add => {
                 if !self.description_buffer.is_empty() {
-                    if let Err(_) = self.pomo.execute(PomoCommand::AddTask(SimpleTask::new(
-                        &self.description_buffer,
-                    ))) {
-                        self.update(Msg::Error(Error::AddTaskFailed));
+                    if self
+                        .pomo
+                        .execute(PomoCommand::AddTask(SimpleTask::new(
+                            &self.description_buffer,
+                        )))
+                        .is_err()
+                    {
+                        self.update(Msg::Error(Error::AddTask));
                     }
 
                     self.store_tasks();
@@ -138,8 +141,8 @@ impl Component for App {
                 true
             }
             Msg::Delete(index) => {
-                if let Err(_) = self.pomo.execute(PomoCommand::RemoveTask(index)) {
-                    self.update(Msg::Error(Error::LocalStorageWriteFailed));
+                if self.pomo.execute(PomoCommand::RemoveTask(index)).is_err() {
+                    self.update(Msg::Error(Error::LocalStorageWrite));
                 }
                 self.store_tasks();
                 true
@@ -149,8 +152,8 @@ impl Component for App {
                 true
             }
             Msg::UpdateWorkTime(value) => {
-                if let Err(_) = LocalStorage::set(WORK_TIME_KEY, value.clone()) {
-                    self.update(Msg::Error(Error::LocalStorageWriteFailed));
+                if LocalStorage::set(WORK_TIME_KEY, value.clone()).is_err() {
+                    self.update(Msg::Error(Error::LocalStorageWrite));
                 }
 
                 self.work_time_buffer = value;
@@ -162,8 +165,8 @@ impl Component for App {
                 true
             }
             Msg::UpdateShortBreakTime(value) => {
-                if let Err(_) = LocalStorage::set(BREAK_TIME_KEY, value.clone()) {
-                    self.update(Msg::Error(Error::LocalStorageWriteFailed));
+                if LocalStorage::set(BREAK_TIME_KEY, value.clone()).is_err() {
+                    self.update(Msg::Error(Error::LocalStorageWrite));
                 }
 
                 self.short_break_time_buffer = value;
@@ -174,7 +177,7 @@ impl Component for App {
                 true
             }
             Msg::UpdateLongBreakTime(value) => {
-                if let Err(_) = LocalStorage::set(LONG_BREAK_TIME_KEY, value.clone()) {
+                if LocalStorage::set(LONG_BREAK_TIME_KEY, value.clone()).is_err() {
                     self.update(Msg::Update("LocalStorageWriteFailed".into()));
                 }
 
@@ -186,8 +189,8 @@ impl Component for App {
                 true
             }
             Msg::UpdateUntilLongBreak(value) => {
-                if let Err(_) = LocalStorage::set(CYCLES_UNTIL_BREAK_KEY, value.clone()) {
-                    self.update(Msg::Error(Error::LocalStorageWriteFailed));
+                if LocalStorage::set(CYCLES_UNTIL_BREAK_KEY, value.clone()).is_err() {
+                    self.update(Msg::Error(Error::LocalStorageWrite));
                 }
                 self.until_long_break_buffer = value;
                 self.pomo.cycles_until_long_break =
@@ -195,8 +198,8 @@ impl Component for App {
                 true
             }
             Msg::UpdateTotalCycles(value) => {
-                if let Err(_) = LocalStorage::set(TOTAL_CYCLES_KEY, value.clone()) {
-                    self.update(Msg::Error(Error::LocalStorageWriteFailed));
+                if LocalStorage::set(TOTAL_CYCLES_KEY, value.clone()).is_err() {
+                    self.update(Msg::Error(Error::LocalStorageWrite));
                 }
                 self.total_cycles_buffer = value;
                 self.pomo.total_cycles = self.total_cycles_buffer.parse::<usize>().unwrap_or(8);
@@ -214,8 +217,8 @@ impl Component for App {
                 true
             }
             Msg::SkipTo(state) => {
-                if let Err(_) = self.pomo.skip_to(state) {
-                    self.update(Msg::Error(Error::UpdateFailed));
+                if self.pomo.skip_to(state).is_err() {
+                    self.update(Msg::Error(Error::Update));
                 }
                 true
             }
@@ -233,7 +236,7 @@ impl Component for App {
                     }
                     self.update(Msg::PomoMessage(message))
                 }
-                Err(_) => self.update(Msg::Error(Error::UpdateFailed)),
+                Err(_) => self.update(Msg::Error(Error::Update)),
             },
         }
     }
@@ -272,8 +275,8 @@ impl App {
             .iter()
             .map(|x| x.to_string())
             .collect::<Vec<_>>();
-        if let Err(_) = LocalStorage::set(TASKS_KEY, tasks) {
-            self.update(Msg::Error(Error::LocalStorageWriteFailed));
+        if LocalStorage::set(TASKS_KEY, tasks).is_err() {
+            self.update(Msg::Error(Error::LocalStorageWrite));
         }
     }
 
