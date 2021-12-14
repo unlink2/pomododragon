@@ -1,14 +1,13 @@
 use crate::error::Error;
 use crate::numberinput::NumberInput;
 use gloo::storage::{LocalStorage, Storage};
+use gloo_timers::callback::Interval;
 use pomododragon::{
     Actor, InstantTimer, Pomo, PomoCommand, PomoMessage, PomoState, SimplePomo, SimpleTask,
     TimeParser, Timer,
 };
 use std::time::Duration;
 use yew::prelude::*;
-use yew::services::interval::{IntervalService, IntervalTask};
-use yew::InputData;
 
 // keys for local storage
 const WORK_TIME_KEY: &str = "pomododragon.work_timer";
@@ -41,7 +40,6 @@ pub enum Msg {
 pub struct App {
     // `ComponentLink` is like a reference to a component.
     // It can be used to send messages to the component
-    link: ComponentLink<Self>,
     pomo: SimplePomo<SimpleTask, InstantTimer>,
     description_buffer: String,
     work_time_buffer: String,
@@ -52,7 +50,7 @@ pub struct App {
     short_break_time_buffer: String,
     long_break_time_buffer: String,
     state: TabState,
-    _task: IntervalTask,
+    _task: Interval,
 }
 
 #[derive(PartialEq, Eq)]
@@ -66,13 +64,11 @@ impl Component for App {
     type Message = Msg;
     type Properties = ();
 
-    fn create(_props: Self::Properties, link: ComponentLink<Self>) -> Self {
-        let callback = link.callback(|_| Msg::Tick);
-        let task = IntervalService::spawn(Duration::from_millis(200), callback);
+    fn create(ctx: &Context<Self>) -> Self {
         let pomo = SimplePomo::default();
+        let link = ctx.link().clone();
 
         let mut n = Self {
-            link,
             pomo,
             description_buffer: "".into(),
             work_time_buffer: LocalStorage::get(WORK_TIME_KEY).unwrap_or_else(|_| "25".into()),
@@ -85,15 +81,26 @@ impl Component for App {
             until_long_break_buffer: LocalStorage::get(CYCLES_UNTIL_BREAK_KEY)
                 .unwrap_or_else(|_| "4".into()),
             total_cycles_buffer: LocalStorage::get(TOTAL_CYCLES_KEY).unwrap_or_else(|_| "8".into()),
-            _task: task,
             state: TabState::Timer,
+            _task: Interval::new(200, move || {
+                link.send_message(Msg::Tick);
+            }),
         };
 
-        n.update(Msg::UpdateWorkTime(n.work_time_buffer.clone()));
-        n.update(Msg::UpdateShortBreakTime(n.short_break_time_buffer.clone()));
-        n.update(Msg::UpdateLongBreakTime(n.long_break_time_buffer.clone()));
-        n.update(Msg::UpdateTotalCycles(n.total_cycles_buffer.clone()));
-        n.update(Msg::UpdateUntilLongBreak(n.until_long_break_buffer.clone()));
+        n.update(ctx, Msg::UpdateWorkTime(n.work_time_buffer.clone()));
+        n.update(
+            ctx,
+            Msg::UpdateShortBreakTime(n.short_break_time_buffer.clone()),
+        );
+        n.update(
+            ctx,
+            Msg::UpdateLongBreakTime(n.long_break_time_buffer.clone()),
+        );
+        n.update(ctx, Msg::UpdateTotalCycles(n.total_cycles_buffer.clone()));
+        n.update(
+            ctx,
+            Msg::UpdateUntilLongBreak(n.until_long_break_buffer.clone()),
+        );
 
         let tasks: Vec<String> = LocalStorage::get(TASKS_KEY).unwrap_or_else(|_| vec![]);
         for task in tasks {
@@ -106,29 +113,29 @@ impl Component for App {
         n
     }
 
-    fn update(&mut self, msg: Self::Message) -> ShouldRender {
+    fn update(&mut self, ctx: &Context<Self>, msg: Self::Message) -> bool {
         match msg {
             Msg::Start => {
                 if self.pomo.start().is_err() {
-                    self.update(Msg::Error(Error::Start));
+                    self.update(ctx, Msg::Error(Error::Start));
                 }
                 true
             }
             Msg::Pause => {
                 if self.pomo.pause().is_err() {
-                    self.update(Msg::Error(Error::Pause));
+                    self.update(ctx, Msg::Error(Error::Pause));
                 }
                 true
             }
             Msg::Resume => {
                 if self.pomo.unpause().is_err() {
-                    self.update(Msg::Error(Error::Unpause));
+                    self.update(ctx, Msg::Error(Error::Unpause));
                 }
                 true
             }
             Msg::Stop => {
                 if self.pomo.reset().is_err() {
-                    self.update(Msg::Error(Error::Reset));
+                    self.update(ctx, Msg::Error(Error::Reset));
                 }
                 true
             }
@@ -141,10 +148,10 @@ impl Component for App {
                         )))
                         .is_err()
                     {
-                        self.update(Msg::Error(Error::AddTask));
+                        self.update(ctx, Msg::Error(Error::AddTask));
                     }
 
-                    self.store_tasks();
+                    self.store_tasks(ctx);
 
                     self.description_buffer = "".into();
                 }
@@ -152,9 +159,9 @@ impl Component for App {
             }
             Msg::Delete(index) => {
                 if self.pomo.execute(PomoCommand::RemoveTask(index)).is_err() {
-                    self.update(Msg::Error(Error::LocalStorageWrite));
+                    self.update(ctx, Msg::Error(Error::LocalStorageWrite));
                 }
-                self.store_tasks();
+                self.store_tasks(ctx);
                 true
             }
             Msg::Update(value) => {
@@ -163,7 +170,7 @@ impl Component for App {
             }
             Msg::UpdateWorkTime(value) => {
                 if LocalStorage::set(WORK_TIME_KEY, value.clone()).is_err() {
-                    self.update(Msg::Error(Error::LocalStorageWrite));
+                    self.update(ctx, Msg::Error(Error::LocalStorageWrite));
                 }
 
                 self.work_time_buffer = value;
@@ -176,7 +183,7 @@ impl Component for App {
             }
             Msg::UpdateShortBreakTime(value) => {
                 if LocalStorage::set(BREAK_TIME_KEY, value.clone()).is_err() {
-                    self.update(Msg::Error(Error::LocalStorageWrite));
+                    self.update(ctx, Msg::Error(Error::LocalStorageWrite));
                 }
 
                 self.short_break_time_buffer = value;
@@ -188,7 +195,7 @@ impl Component for App {
             }
             Msg::UpdateLongBreakTime(value) => {
                 if LocalStorage::set(LONG_BREAK_TIME_KEY, value.clone()).is_err() {
-                    self.update(Msg::Update("LocalStorageWriteFailed".into()));
+                    self.update(ctx, Msg::Update("LocalStorageWriteFailed".into()));
                 }
 
                 self.long_break_time_buffer = value;
@@ -200,7 +207,7 @@ impl Component for App {
             }
             Msg::UpdateUntilLongBreak(value) => {
                 if LocalStorage::set(CYCLES_UNTIL_BREAK_KEY, value.clone()).is_err() {
-                    self.update(Msg::Error(Error::LocalStorageWrite));
+                    self.update(ctx, Msg::Error(Error::LocalStorageWrite));
                 }
                 self.until_long_break_buffer = value;
                 self.pomo.cycles_until_long_break =
@@ -209,7 +216,7 @@ impl Component for App {
             }
             Msg::UpdateTotalCycles(value) => {
                 if LocalStorage::set(TOTAL_CYCLES_KEY, value.clone()).is_err() {
-                    self.update(Msg::Error(Error::LocalStorageWrite));
+                    self.update(ctx, Msg::Error(Error::LocalStorageWrite));
                 }
                 self.total_cycles_buffer = value;
                 self.pomo.total_cycles = self.total_cycles_buffer.parse::<usize>().unwrap_or(8);
@@ -221,7 +228,7 @@ impl Component for App {
             }
             Msg::PomoMessage(message) => {
                 if let PomoMessage::Transition(_) = message {
-                    self.store_tasks();
+                    self.store_tasks(ctx);
                 }
 
                 true
@@ -232,7 +239,7 @@ impl Component for App {
             }
             Msg::SkipTo(state) => {
                 if self.pomo.skip_to(state).is_err() {
-                    self.update(Msg::Error(Error::Update));
+                    self.update(ctx, Msg::Error(Error::Update));
                 }
                 true
             }
@@ -248,18 +255,14 @@ impl Component for App {
                         );
                         self.goal = format!("{}", timer.goal().as_secs());
                     }
-                    self.update(Msg::PomoMessage(message))
+                    self.update(ctx, Msg::PomoMessage(message))
                 }
-                Err(_) => self.update(Msg::Error(Error::Update)),
+                Err(_) => self.update(ctx, Msg::Error(Error::Update)),
             },
         }
     }
 
-    fn change(&mut self, _props: Self::Properties) -> ShouldRender {
-        false
-    }
-
-    fn view(&self) -> Html {
+    fn view(&self, ctx: &Context<Self>) -> Html {
         html! {
             <section class="section">
                 <div class="container">
@@ -267,17 +270,17 @@ impl Component for App {
                         <div class="tabs">
                             <ul>
                                 <li class={self.get_tab_active(TabState::Timer)}>
-                                    <a onclick=self.link.callback(|_| Msg::SetTab(TabState::Timer))>
+                                    <a onclick={ctx.link().callback(|_| Msg::SetTab(TabState::Timer))}>
                                         { "Tasks" }
                                     </a>
                                 </li>
                                 <li class={self.get_tab_active(TabState::Tasks)}>
-                                    <a onclick=self.link.callback(|_| Msg::SetTab(TabState::Tasks))>
+                                    <a onclick={ctx.link().callback(|_| Msg::SetTab(TabState::Tasks))}>
                                         { "Tasks" }
                                     </a>
                                 </li>
                                 <li class={self.get_tab_active(TabState::Settings)}>
-                                    <a onclick=self.link.callback(|_| Msg::SetTab(TabState::Settings))>
+                                    <a onclick={ctx.link().callback(|_| Msg::SetTab(TabState::Settings))}>
                                         { "Settings" }
                                     </a>
                                 </li>
@@ -285,9 +288,9 @@ impl Component for App {
                         </div>
                         {
                             match self.state {
-                                TabState::Settings => self.view_settings(),
-                                TabState::Tasks => self.view_task_list(),
-                                _ => self.view_timer()
+                                TabState::Settings => self.view_settings(ctx),
+                                TabState::Tasks => self.view_task_list(ctx),
+                                _ => self.view_timer(ctx)
                             }
                         }
                     </div>
@@ -306,7 +309,7 @@ impl App {
         }
     }
 
-    fn store_tasks(&mut self) {
+    fn store_tasks(&mut self, ctx: &Context<Self>) {
         // collect task strings and push to local storage
         let tasks = self
             .pomo
@@ -315,7 +318,7 @@ impl App {
             .map(|x| x.to_string())
             .collect::<Vec<_>>();
         if LocalStorage::set(TASKS_KEY, tasks).is_err() {
-            self.update(Msg::Error(Error::LocalStorageWrite));
+            self.update(ctx, Msg::Error(Error::LocalStorageWrite));
         }
     }
 
@@ -327,7 +330,7 @@ impl App {
         }
     }
 
-    fn view_timer(&self) -> Html {
+    fn view_timer(&self, ctx: &Context<Self>) -> Html {
         html! {
             <div class="container box is-primary">
                 <div class="">
@@ -362,17 +365,17 @@ impl App {
                     </div>
                     <progress
                         class="progress is-primary is-large"
-                        value=self.progress.clone()
-                        max=self.goal.clone()>
+                        value={self.progress.clone()}
+                        max={self.goal.clone()}>
                     </progress>
                 </div>
-                { self.view_controls() }
-                { self.view_state_skips() }
+                { self.view_controls(ctx) }
+                { self.view_state_skips(ctx) }
             </div>
         }
     }
 
-    fn view_start_stop(&self) -> Html {
+    fn view_start_stop(&self, ctx: &Context<Self>) -> Html {
         {
             // change start/stop buttom depending on the state
             if self.pomo.state() != PomoState::NotStarted {
@@ -380,7 +383,7 @@ impl App {
                     <button
                         class="button is-warning"
                         disabled={ self.pomo.is_paused() }
-                        onclick=self.link.callback(|_| Msg::Stop)>
+                        onclick={ctx.link().callback(|_| Msg::Stop)}>
                         { "Stop" }
                     </button>
                 }
@@ -389,7 +392,7 @@ impl App {
                     <button
                         class="button is-primary"
                         disabled={ self.pomo.is_paused() }
-                        onclick=self.link.callback(|_| Msg::Start)>
+                        onclick={ctx.link().callback(|_| Msg::Start)}>
                         { "Start" }
                     </button>
                 }
@@ -397,13 +400,13 @@ impl App {
         }
     }
 
-    fn view_pause_resume(&self) -> Html {
+    fn view_pause_resume(&self, ctx: &Context<Self>) -> Html {
         if self.pomo.is_paused() {
             html! {
                 <button
                     class="button is-info"
                     disabled={ self.pomo.state() == PomoState::NotStarted }
-                    onclick=self.link.callback(|_| Msg::Resume)>
+                    onclick={ctx.link().callback(|_| Msg::Resume)}>
                     { "Resume" }
                 </button>
             }
@@ -412,85 +415,90 @@ impl App {
                 <button
                     class="button is-info"
                     disabled={ self.pomo.state() == PomoState::NotStarted }
-                    onclick=self.link.callback(|_| Msg::Pause)>
+                    onclick={ctx.link().callback(|_| Msg::Pause)}>
                     { "Pause" }
                 </button>
             }
         }
     }
 
-    fn view_controls(&self) -> Html {
+    fn view_controls(&self, ctx: &Context<Self>) -> Html {
         html! {
             <div class="box">
-                { self.view_start_stop() }
-                { self.view_pause_resume() }
+                { self.view_start_stop(ctx) }
+                { self.view_pause_resume(ctx) }
             </div>
         }
     }
 
-    fn view_state_skips(&self) -> Html {
+    fn view_state_skips(&self, ctx: &Context<Self>) -> Html {
         html! {
             <div class="box">
-                { self.view_skip_state("Working", PomoState::Working) }
-                { self.view_skip_state("Break", PomoState::Break) }
-                { self.view_skip_state("Long Break", PomoState::LongBreak) }
+                { self.view_skip_state("Working", PomoState::Working, ctx) }
+                { self.view_skip_state("Break", PomoState::Break, ctx) }
+                { self.view_skip_state("Long Break", PomoState::LongBreak, ctx) }
             </div>
         }
     }
 
-    fn view_skip_state(&self, label: &str, state: PomoState) -> Html {
+    fn view_skip_state(&self, label: &str, state: PomoState, ctx: &Context<Self>) -> Html {
         html! {
             <button
                 class="button is-info"
                 disabled={ self.pomo.state() == PomoState::NotStarted }
-                onclick=self.link.callback(move |_| Msg::SkipTo(state))>
+                onclick={ctx.link().callback(move |_| Msg::SkipTo(state))}>
                 { label }
             </button>
         }
     }
 
-    fn view_settings(&self) -> Html {
+    fn view_settings(&self, ctx: &Context<Self>) -> Html {
         html! {
             <div class="content box">
                 <article class="content">
                     <label>
                         <NumberInput
-                            value=self.work_time_buffer.clone()
-                            oninput=self.link.callback(|e: InputData| Msg::UpdateWorkTime(e.value))
+                            value={self.work_time_buffer.clone()}
+                            oninput={ctx.link().callback(|e: InputEvent|
+                                Msg::UpdateWorkTime(e.data().unwrap_or_else(|| "".into())))}
                             min={1}
-                            disabled=self.is_timer_running()
+                            disabled={self.is_timer_running()}
                             label="Work"
                         />
                     </label>
                     <label>
                         <NumberInput
-                            value=self.short_break_time_buffer.clone()
-                            oninput=self.link.callback(|e: InputData| Msg::UpdateShortBreakTime(e.value))
+                            value={self.short_break_time_buffer.clone()}
+                            oninput={ctx.link().callback(|e: InputEvent|
+                                Msg::UpdateShortBreakTime(e.data().unwrap_or_else(|| "".into())))}
                             min={1}
-                            disabled=self.is_timer_running()
+                            disabled={self.is_timer_running()}
                             label="Short Break" />
                     </label>
 
                     <label>
                         <NumberInput
-                            value=self.long_break_time_buffer.clone()
-                            oninput=self.link.callback(|e: InputData| Msg::UpdateLongBreakTime(e.value))
+                            value={self.long_break_time_buffer.clone()}
+                            oninput={ctx.link().callback(|e: InputEvent|
+                                Msg::UpdateLongBreakTime(e.data().unwrap_or_else(|| "".into())))}
                             min={1}
-                            disabled=self.is_timer_running()
+                            disabled={self.is_timer_running()}
                             label="Long Break" />
                     </label>
 
                     <label>
                         <NumberInput
-                            value=self.until_long_break_buffer.clone()
-                            oninput=self.link.callback(|e: InputData| Msg::UpdateUntilLongBreak(e.value))
+                            value={self.until_long_break_buffer.clone()}
+                            oninput={ctx.link().callback(|e: InputEvent|
+                                Msg::UpdateUntilLongBreak(e.data().unwrap_or_else(|| "".into())))}
                             min={1}
                             label="Cycles Until Long Break" />
                     </label>
                     <label>
                         <NumberInput
-                            value=self.total_cycles_buffer.clone()
-                            oninput=self.link.callback(|e: InputData| Msg::UpdateTotalCycles(e.value))
+                            value={self.total_cycles_buffer.clone()}
+                            oninput={ctx.link().callback(|e: InputEvent|
+                                Msg::UpdateTotalCycles(e.data().unwrap_or_else(|| "".into())))}
                             min={1}
                             label="Total Cycles" />
                     </label>
@@ -499,7 +507,7 @@ impl App {
         }
     }
 
-    fn view_task(&self, task: &SimpleTask, index: usize) -> Html {
+    fn view_task(&self, task: &SimpleTask, index: usize, ctx: &Context<Self>) -> Html {
         html! {
             <div class="message">
                 <div class="message-header">
@@ -507,14 +515,14 @@ impl App {
                     <button
                         class="delete"
                         aria-label="delete"
-                        onclick=self.link.callback(move |_| Msg::Delete(index))>
+                        onclick={ctx.link().callback(move |_| Msg::Delete(index))}>
                     </button>
                 </div>
             </div>
         }
     }
 
-    fn view_task_list(&self) -> Html {
+    fn view_task_list(&self, ctx: &Context<Self>) -> Html {
         html! {
             <div class="container box">
                 <article class="content box">
@@ -523,15 +531,16 @@ impl App {
                          class="input is-primary is-three-quarters"
                          type="text"
                          placeholder="What needs to be done?"
-                         value=self.description_buffer.clone()
-                         oninput=self.link.callback(|e: InputData| Msg::Update(e.value))
-                         onkeypress=self.link.batch_callback(|e: KeyboardEvent| {
+                         value={self.description_buffer.clone()}
+                         oninput={ctx.link().callback(|e: InputEvent|
+                             Msg::Update(e.data().unwrap_or_else(|| "".into())))}
+                         onkeypress={ctx.link().batch_callback(|e: KeyboardEvent| {
                                  if e.key() == "Enter" { Some(Msg::Add) } else { None }
-                             })
+                             })}
                         />
                         <button
                             class="button is-info"
-                            onclick=self.link.callback(|_| Msg::Add)>
+                            onclick={ctx.link().callback(|_| Msg::Add)}>
                             { "Add" }
                         </button>
                     </div>
@@ -539,7 +548,7 @@ impl App {
                 {
                     for self.pomo.tasks().iter()
                         .enumerate()
-                        .map(|(i, task)| self.view_task(task, i))
+                        .map(|(i, task)| self.view_task(task, i,ctx))
                 }
             </div>
         }

@@ -6,52 +6,52 @@ use crate::App;
 use yew::prelude::*;
 use yew_router::prelude::*;
 
-#[derive(Switch, Debug, Clone)]
+#[derive(Routable, Debug, Clone, PartialEq)]
 pub enum AppRoute {
-    #[to = "/!"]
+    #[at("/")]
     Index,
 
-    #[to = "/about"]
+    #[at("/about")]
     About,
 
+    #[not_found]
+    #[at("/404")]
     NotFound,
 }
 
 pub enum Msg {}
 
-pub struct AppRouter {
-    _link: ComponentLink<Self>,
-}
+pub struct AppRouter {}
 
 impl Component for AppRouter {
     type Message = Msg;
     type Properties = ();
 
-    fn create(_props: Self::Properties, link: ComponentLink<Self>) -> Self {
-        Self { _link: link }
+    fn create(_ctx: &Context<Self>) -> Self {
+        Self {}
     }
 
-    fn update(&mut self, _msg: Self::Message) -> ShouldRender {
+    fn update(&mut self, _ctx: &Context<Self>, _msg: Self::Message) -> bool {
         true
     }
 
-    fn change(&mut self, _props: Self::Properties) -> ShouldRender {
-        false
-    }
-
-    fn view(&self) -> Html {
+    fn view(&self, _ctx: &Context<Self>) -> Html {
         html! {
             <div>
                 <Nav />
-                <Router<AppRoute, ()>
-                render = Router::render(|switch: AppRoute| {
-                    match switch {
-                        AppRoute::Index => html!{<App />},
-                        AppRoute::About => html!{<About />},
-                        _ => html!{<NotFound />},
+                <BrowserRouter>
+                    <Switch<AppRoute>
+                    render = {
+                        Switch::render(|switch: &AppRoute| {
+                            match switch {
+                                AppRoute::Index => html!{<App />},
+                                AppRoute::About => html!{<About />},
+                                _ => html!{<NotFound />},
+                            }
+                        })
                     }
-                })
-                />
+                    />
+                </BrowserRouter>
                 <Footer />
             </div>
         }
