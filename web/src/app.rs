@@ -1,5 +1,5 @@
 use crate::error::Error;
-use crate::numberinput::NumberInput;
+use crate::input::{Input, InputKind};
 use gloo::storage::{LocalStorage, Storage};
 use gloo_timers::callback::Interval;
 use pomododragon::{
@@ -457,50 +457,59 @@ impl App {
             <div class="content box">
                 <article class="content">
                     <label>
-                        <NumberInput
+                        <Input
                             value={self.work_time_buffer.clone()}
-                            oninput={ctx.link().callback(|e: InputEvent|
-                                Msg::UpdateWorkTime(e.data().unwrap_or_else(|| "".into())))}
+                            oninput={ctx.link().callback(|e: String|
+                                Msg::UpdateWorkTime(e))}
                             min={1}
                             disabled={self.is_timer_running()}
                             label="Work"
+                            kind={InputKind::Number}
                         />
                     </label>
                     <label>
-                        <NumberInput
+                        <Input
                             value={self.short_break_time_buffer.clone()}
-                            oninput={ctx.link().callback(|e: InputEvent|
-                                Msg::UpdateShortBreakTime(e.data().unwrap_or_else(|| "".into())))}
+                            oninput={ctx.link().callback(|e: String|
+                                Msg::UpdateShortBreakTime(e))}
                             min={1}
                             disabled={self.is_timer_running()}
-                            label="Short Break" />
+                            label="Short Break"
+                            kind={InputKind::Number}
+                        />
                     </label>
 
                     <label>
-                        <NumberInput
+                        <Input
                             value={self.long_break_time_buffer.clone()}
-                            oninput={ctx.link().callback(|e: InputEvent|
-                                Msg::UpdateLongBreakTime(e.data().unwrap_or_else(|| "".into())))}
+                            oninput={ctx.link().callback(|e: String|
+                                Msg::UpdateLongBreakTime(e))}
                             min={1}
                             disabled={self.is_timer_running()}
-                            label="Long Break" />
+                            label="Long Break"
+                            kind={InputKind::Number}
+                        />
                     </label>
 
                     <label>
-                        <NumberInput
+                        <Input
                             value={self.until_long_break_buffer.clone()}
-                            oninput={ctx.link().callback(|e: InputEvent|
-                                Msg::UpdateUntilLongBreak(e.data().unwrap_or_else(|| "".into())))}
+                            oninput={ctx.link().callback(|e: String|
+                                Msg::UpdateUntilLongBreak(e))}
                             min={1}
-                            label="Cycles Until Long Break" />
+                            label="Cycles Until Long Break"
+                            kind={InputKind::Number}
+                        />
                     </label>
                     <label>
-                        <NumberInput
+                        <Input
                             value={self.total_cycles_buffer.clone()}
-                            oninput={ctx.link().callback(|e: InputEvent|
-                                Msg::UpdateTotalCycles(e.data().unwrap_or_else(|| "".into())))}
+                            oninput={ctx.link().callback(|e: String|
+                                Msg::UpdateTotalCycles(e))}
                             min={1}
-                            label="Total Cycles" />
+                            label="Total Cycles"
+                            kind={InputKind::Number}
+                        />
                     </label>
                 </article>
             </div>
@@ -527,22 +536,26 @@ impl App {
             <div class="container box">
                 <article class="content box">
                     <div class="columns">
-                       <input
-                         class="input is-primary is-three-quarters"
-                         type="text"
+                       <Input
+                         class="column is-three-quarters"
+                         input_class="input is-primary"
+                         kind={InputKind::Text}
                          placeholder="What needs to be done?"
                          value={self.description_buffer.clone()}
-                         oninput={ctx.link().callback(|e: InputEvent|
-                             Msg::Update(e.data().unwrap_or_else(|| "".into())))}
+                         oninput={ctx.link().callback(|e: String|
+                             Msg::Update(e))
+                         }
                          onkeypress={ctx.link().batch_callback(|e: KeyboardEvent| {
                                  if e.key() == "Enter" { Some(Msg::Add) } else { None }
                              })}
                         />
-                        <button
-                            class="button is-info"
-                            onclick={ctx.link().callback(|_| Msg::Add)}>
-                            { "Add" }
-                        </button>
+                        <div class="column">
+                            <button
+                                class="button is-info"
+                                onclick={ctx.link().callback(|_| Msg::Add)}>
+                                { "Add" }
+                            </button>
+                        </div>
                     </div>
                 </article>
                 {

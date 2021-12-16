@@ -21,3 +21,5 @@ instant = { version = "0.1.12", features = [ "wasm-bindgen", "inaccurate" ] }
 console_error_panic_hook = "0.1.7"
 gloo = "0.4"
 gloo-timers = "0.2.2"
+web-sys = "0.3.55"
+prefers-color-scheme = "0.1.1"
