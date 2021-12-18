@@ -4,7 +4,7 @@ use std::thread;
 use std::time::Duration;
 
 use pomododragon::{
-    Actor, InstantTimer, Pomo, PomoCommand, SimplePomoBuilder, SimpleTask, TimeParser, Timer,
+    Actor, InstantTimer, PomoCommand, PomoData, SimplePomoBuilder, SimpleTask, TimeParser, Timer,
 };
 
 #[derive(Parser, Debug)]

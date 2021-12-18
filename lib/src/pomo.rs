@@ -6,8 +6,12 @@ use derive_builder::*;
 /// The main communication between the application and
 /// the pomo state machine should be done by using
 /// the actor/command interface
+///
+/// All pomo machines should implement PomoMachine, PomoData and PomoActions as well as Actor
 pub trait Pomo<TTask, TTimer, TError>:
     Actor<PomoCommand<TTask, TError>, Result<PomoMessage<TTask, TError>, TError>>
+    + PomoData<TTask, TTimer, TError>
+    + PomoActions<TTask, TTimer, TError>
 where
     TTask: Task<TError>,
     TTimer: Timer<TError>,
@@ -20,27 +24,23 @@ where
     /// shoudl call output.update
     /// and output.task_compelted if a task was completed!
     fn update(&mut self) -> Result<PomoMessage<TTask, TError>, TError>;
+}
 
+pub trait PomoData<TTask, TTimer, TError>
+where
+    TTask: Task<TError>,
+    TTimer: Timer<TError>,
+{
     fn state(&self) -> PomoState;
+
+    /// returns the current timer
+    fn timer(&self) -> Option<&TTimer>;
 
     /// returns the current task
     fn task(&self) -> Option<&TTask>;
 
     fn tasks(&self) -> &[TTask];
     fn tasks_mut(&mut self) -> &mut [TTask];
-
-    /// returns the current timer
-    fn timer(&self) -> Option<&TTimer>;
-
-    /// Should call output.state_changed!
-    fn set_state(&mut self, state: PomoState) -> Result<PomoMessage<TTask, TError>, TError>;
-
-    fn toggle_pause(&mut self) -> Result<PomoMessage<TTask, TError>, TError>;
-    fn pause(&mut self) -> Result<PomoMessage<TTask, TError>, TError>;
-    fn unpause(&mut self) -> Result<PomoMessage<TTask, TError>, TError>;
-
-    /// Stops all timers, skips to new state and starts apropriate timers
-    fn skip_to(&mut self, state: PomoState) -> Result<PomoMessage<TTask, TError>, TError>;
 
     fn is_paused(&self) -> bool {
         self.state() == PomoState::Paused
@@ -51,7 +51,24 @@ where
     }
 }
 
-/// Current state
+pub trait PomoActions<TTask, TTimer, TError>
+where
+    TTask: Task<TError>,
+    TTimer: Timer<TError>,
+{
+    /// sets the state
+    fn set_state(&mut self, state: PomoState) -> Result<PomoMessage<TTask, TError>, TError>;
+
+    fn toggle_pause(&mut self) -> Result<PomoMessage<TTask, TError>, TError>;
+    fn pause(&mut self) -> Result<PomoMessage<TTask, TError>, TError>;
+    fn unpause(&mut self) -> Result<PomoMessage<TTask, TError>, TError>;
+
+    /// Stops all timers, skips to new state and starts apropriate timers
+    /// should use set_state to start the apropriate state
+    fn skip_to(&mut self, state: PomoState) -> Result<PomoMessage<TTask, TError>, TError>;
+}
+
+/// All possible states a pomo machine can be in
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum PomoState {
     NotStarted,
@@ -276,7 +293,13 @@ where
             PomoState::Paused | PomoState::Completed => PomoMessage::NoMessage,
         })
     }
+}
 
+impl<TTask, TTimer> PomoActions<TTask, TTimer, ()> for SimplePomo<TTask, TTimer>
+where
+    TTask: Task<()>,
+    TTimer: Timer<()>,
+{
     fn skip_to(&mut self, state: PomoState) -> Result<PomoMessage<TTask, ()>, ()> {
         self.work_timer.reset()?;
         self.break_timer.reset()?;
@@ -341,7 +364,13 @@ where
             )))
         }
     }
+}
 
+impl<TTask, TTimer> PomoData<TTask, TTimer, ()> for SimplePomo<TTask, TTimer>
+where
+    TTask: Task<()>,
+    TTimer: Timer<()>,
+{
     fn task(&self) -> Option<&TTask> {
         self.tasks.get(0)
     }

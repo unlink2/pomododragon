@@ -3,8 +3,8 @@ use crate::input::{Input, InputKind};
 use gloo::storage::{LocalStorage, Storage};
 use gloo_timers::callback::Interval;
 use pomododragon::{
-    Actor, InstantTimer, Pomo, PomoCommand, PomoMessage, PomoState, SimplePomo, SimpleTask,
-    TimeParser, Timer,
+    Actor, InstantTimer, Pomo, PomoActions, PomoCommand, PomoData, PomoMessage, PomoState,
+    SimplePomo, SimpleTask, TimeParser, Timer,
 };
 use std::time::Duration;
 use yew::prelude::*;
@@ -459,8 +459,8 @@ impl App {
                     <label>
                         <Input
                             value={self.work_time_buffer.clone()}
-                            oninput={ctx.link().callback(|e: String|
-                                Msg::UpdateWorkTime(e))}
+                            oninput={ctx.link().callback(
+                                Msg::UpdateWorkTime)}
                             min={1}
                             disabled={self.is_timer_running()}
                             label="Work"
@@ -470,8 +470,8 @@ impl App {
                     <label>
                         <Input
                             value={self.short_break_time_buffer.clone()}
-                            oninput={ctx.link().callback(|e: String|
-                                Msg::UpdateShortBreakTime(e))}
+                            oninput={ctx.link().callback(
+                                Msg::UpdateShortBreakTime)}
                             min={1}
                             disabled={self.is_timer_running()}
                             label="Short Break"
@@ -482,8 +482,8 @@ impl App {
                     <label>
                         <Input
                             value={self.long_break_time_buffer.clone()}
-                            oninput={ctx.link().callback(|e: String|
-                                Msg::UpdateLongBreakTime(e))}
+                            oninput={ctx.link().callback(
+                                Msg::UpdateLongBreakTime)}
                             min={1}
                             disabled={self.is_timer_running()}
                             label="Long Break"
@@ -494,8 +494,8 @@ impl App {
                     <label>
                         <Input
                             value={self.until_long_break_buffer.clone()}
-                            oninput={ctx.link().callback(|e: String|
-                                Msg::UpdateUntilLongBreak(e))}
+                            oninput={ctx.link().callback(
+                                Msg::UpdateUntilLongBreak)}
                             min={1}
                             label="Cycles Until Long Break"
                             kind={InputKind::Number}
@@ -504,8 +504,8 @@ impl App {
                     <label>
                         <Input
                             value={self.total_cycles_buffer.clone()}
-                            oninput={ctx.link().callback(|e: String|
-                                Msg::UpdateTotalCycles(e))}
+                            oninput={ctx.link().callback(
+                                Msg::UpdateTotalCycles)}
                             min={1}
                             label="Total Cycles"
                             kind={InputKind::Number}
@@ -542,8 +542,8 @@ impl App {
                          kind={InputKind::Text}
                          placeholder="What needs to be done?"
                          value={self.description_buffer.clone()}
-                         oninput={ctx.link().callback(|e: String|
-                             Msg::Update(e))
+                         oninput={ctx.link().callback(
+                             Msg::Update)
                          }
                          onkeypress={ctx.link().batch_callback(|e: KeyboardEvent| {
                                  if e.key() == "Enter" { Some(Msg::Add) } else { None }
