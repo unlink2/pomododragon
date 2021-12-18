@@ -1,6 +1,23 @@
 @charset "utf-8";
 
-@media (prefers-color-scheme: light) {
+@media (prefers-color-scheme: dark) {
+    $scheme_brand: #003049;
+    $text_brand: #dee2e6;
+
+    // bulma global variables
+    $scheme-main: $scheme_brand;
+    $background: $scheme-main;
+
+    $text: $text_brand;
+    $text-light: $text_brand;
+    $text-strong: $text_brand;
+
+
+    // Update some of Bulma's component variables
+    $control-border-width: 2px;
+    $input-border-color: transparent;
+    $input-shadow: none;
+
     @import "./dist-libs/bulma/sass/base/_all.sass";
     @import "./dist-libs/bulma/sass/components/_all.sass";
     @import "./dist-libs/bulma/sass/elements/_all.sass";
