@@ -2,6 +2,7 @@ mod about;
 mod app;
 mod error;
 mod footer;
+mod icon;
 mod input;
 mod nav;
 mod notfound;

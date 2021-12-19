@@ -1,4 +1,5 @@
 use crate::error::Error;
+use crate::icon::Icon;
 use crate::input::{Input, InputKind};
 use gloo::storage::{LocalStorage, Storage};
 use gloo_timers::callback::Interval;
@@ -369,8 +370,10 @@ impl App {
                         max={self.goal.clone()}>
                     </progress>
                 </div>
+                <div class="box">
                 { self.view_controls(ctx) }
                 { self.view_state_skips(ctx) }
+                </div>
             </div>
         }
     }
@@ -384,7 +387,7 @@ impl App {
                         class="button is-warning"
                         disabled={ self.pomo.is_paused() }
                         onclick={ctx.link().callback(|_| Msg::Stop)}>
-                        { "Stop" }
+                        <Icon class={"fas fa-stop"} alt={"Stop"} />
                     </button>
                 }
             } else {
@@ -393,7 +396,7 @@ impl App {
                         class="button is-primary"
                         disabled={ self.pomo.is_paused() }
                         onclick={ctx.link().callback(|_| Msg::Start)}>
-                        { "Start" }
+                        <Icon class={"fas fa-play"} alt={"Start"}/>
                     </button>
                 }
             }
@@ -407,7 +410,7 @@ impl App {
                     class="button is-info"
                     disabled={ self.pomo.state() == PomoState::NotStarted }
                     onclick={ctx.link().callback(|_| Msg::Resume)}>
-                    { "Resume" }
+                    <Icon class={"fas fa-play"} alt={"Resume"}/>
                 </button>
             }
         } else {
@@ -416,7 +419,7 @@ impl App {
                     class="button is-info"
                     disabled={ self.pomo.state() == PomoState::NotStarted }
                     onclick={ctx.link().callback(|_| Msg::Pause)}>
-                    { "Pause" }
+                    <Icon class={"fas fa-pause"} alt={"Pause"}/>
                 </button>
             }
         }
@@ -424,7 +427,7 @@ impl App {
 
     fn view_controls(&self, ctx: &Context<Self>) -> Html {
         html! {
-            <div class="box">
+            <div class="buttons">
                 { self.view_start_stop(ctx) }
                 { self.view_pause_resume(ctx) }
             </div>
@@ -433,21 +436,27 @@ impl App {
 
     fn view_state_skips(&self, ctx: &Context<Self>) -> Html {
         html! {
-            <div class="box">
-                { self.view_skip_state("Working", PomoState::Working, ctx) }
-                { self.view_skip_state("Break", PomoState::Break, ctx) }
-                { self.view_skip_state("Long Break", PomoState::LongBreak, ctx) }
+            <div class="buttons">
+                { self.view_skip_state("fas fa-briefcase", "Working", PomoState::Working, ctx) }
+                { self.view_skip_state("fas fa-coffee", "Break", PomoState::Break, ctx) }
+                { self.view_skip_state("fas fa-bed", "Long Break", PomoState::LongBreak, ctx) }
             </div>
         }
     }
 
-    fn view_skip_state(&self, label: &str, state: PomoState, ctx: &Context<Self>) -> Html {
+    fn view_skip_state(
+        &self,
+        icon: &str,
+        label: &str,
+        state: PomoState,
+        ctx: &Context<Self>,
+    ) -> Html {
         html! {
             <button
                 class="button is-info"
                 disabled={ self.pomo.state() == PomoState::NotStarted }
                 onclick={ctx.link().callback(move |_| Msg::SkipTo(state))}>
-                { label }
+                <Icon class={icon.to_string()} alt={label.to_string()}/>
             </button>
         }
     }
