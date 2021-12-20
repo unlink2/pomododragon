@@ -8,6 +8,12 @@ pub struct Nav {
     active: bool,
 }
 
+impl Nav {
+    fn is_active(&self) -> String {
+        if self.active { "is-active" } else { "" }.into()
+    }
+}
+
 impl Component for Nav {
     type Message = Msg;
     type Properties = ();
@@ -45,23 +51,15 @@ impl Component for Nav {
                     </a>
                 </div>
 
-                <div id="navbar" class="navbar-menu has-background-primary is-active">
+                <div id="navbar" class={classes!("navbar-menu", "has-text-light-link", self.is_active())}>
                     <div class="navbar-start">
                         <a href="/" class="navbar-item">{ "Home" }</a>
-                    </div>
-                </div>
-                 <div class="navbar-item has-dropdown is-hoverable">
-                    <a class="navbar-link has-text-link-light">
-                        { "More" }
-                    </a>
-
-                    <div class="navbar-dropdown">
-                      <a href="/about" class="navbar-item">
+                        <a href="/about" class="navbar-item">
                           { "About" }
-                      </a>
-                      <a href="https://github.com/unlink2/pomododragon" class="navbar-item">
+                        </a>
+                        <a href="https://github.com/unlink2/pomododragon" class="navbar-item">
                           { "Source" }
-                      </a>
+                        </a>
                     </div>
                 </div>
             </div>
