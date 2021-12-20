@@ -244,7 +244,7 @@ impl Component for App {
     fn view(&self, ctx: &Context<Self>) -> Html {
         html! {
             <section class="section">
-                <div class="container">
+                <div class="container is-max-desktop">
                     <div>
                         <div class="tabs">
                             <ul>
@@ -365,7 +365,7 @@ impl App {
                         class="button is-warning"
                         disabled={ self.pomo.is_paused() }
                         onclick={ctx.link().callback(|_| Msg::Stop)}>
-                        <Icon class={"fas fa-stop"} alt={"Stop"} />
+                        <Icon class={"fas fa-stop fa-align-center"} alt={"Stop"} />
                     </button>
                 }
             } else {
@@ -374,7 +374,7 @@ impl App {
                         class="button is-primary"
                         disabled={ self.pomo.is_paused() }
                         onclick={ctx.link().callback(|_| Msg::Start)}>
-                        <Icon class={"fas fa-play"} alt={"Start"}/>
+                        <Icon class={"fas fa-play fa-align-center"} alt={"Start"}/>
                     </button>
                 }
             }
@@ -388,7 +388,7 @@ impl App {
                     class="button is-info"
                     disabled={ self.pomo.state() == PomoState::NotStarted }
                     onclick={ctx.link().callback(|_| Msg::Resume)}>
-                    <Icon class={"fas fa-play"} alt={"Resume"}/>
+                    <Icon class={"fas fa-play fa-align-center"} alt={"Resume"}/>
                 </button>
             }
         } else {
@@ -397,7 +397,7 @@ impl App {
                     class="button is-info"
                     disabled={ self.pomo.state() == PomoState::NotStarted }
                     onclick={ctx.link().callback(|_| Msg::Pause)}>
-                    <Icon class={"fas fa-pause"} alt={"Pause"}/>
+                    <Icon class={"fas fa-pause fa-align-center"} alt={"Pause"}/>
                 </button>
             }
         }
@@ -405,7 +405,7 @@ impl App {
 
     fn view_controls(&self, ctx: &Context<Self>) -> Html {
         html! {
-            <div class="buttons">
+            <div class="buttons has-addons is-centered are-large">
                 { self.view_start_stop(ctx) }
                 { self.view_pause_resume(ctx) }
             </div>
@@ -414,10 +414,10 @@ impl App {
 
     fn view_state_skips(&self, ctx: &Context<Self>) -> Html {
         html! {
-            <div class="buttons">
-                { self.view_skip_state("fas fa-briefcase", "Working", PomoState::Working, ctx) }
-                { self.view_skip_state("fas fa-coffee", "Break", PomoState::Break, ctx) }
-                { self.view_skip_state("fas fa-bed", "Long Break", PomoState::LongBreak, ctx) }
+            <div class="buttons has-addons is-centered are-large">
+                { self.view_skip_state("fas fa-briefcase fa-align-center", "Working", PomoState::Working, ctx) }
+                { self.view_skip_state("fas fa-coffee fa-align-center", "Break", PomoState::Break, ctx) }
+                { self.view_skip_state("fas fa-bed fa-align-center", "Long Break", PomoState::LongBreak, ctx) }
             </div>
         }
     }
