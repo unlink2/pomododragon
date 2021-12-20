@@ -1,22 +1,25 @@
 @charset "utf-8";
 
 @media (prefers-color-scheme: dark) {
-    $scheme_brand: #003049;
-    $text_brand: #dee2e6;
+    $scheme-brand: #141414;
+    $text-brand: #dee2e6;
+    $primary-brand: #6200ee;
+    $link-hover-brand: #d002e6;
 
     // bulma global variables
-    $scheme-main: $scheme_brand;
-    $background: $scheme-main;
+    $scheme-main: $scheme-brand;
+    $background: $scheme-brand;
+    $link-hover: $link-hover-brand;
+    $navbar-dropdown-item-hover-color: $link-hover-brand;
+
+    $body-background-color: $scheme-brand;
+    $footer-background-color: $scheme-brand;
+    $navbar-background-color: $scheme-brand;
+    $primary: $primary-brand;
 
     $text: $text_brand;
     $text-light: $text_brand;
     $text-strong: $text_brand;
-
-
-    // Update some of Bulma's component variables
-    $control-border-width: 2px;
-    $input-border-color: transparent;
-    $input-shadow: none;
 
     @import "./dist-libs/bulma/sass/base/_all.sass";
     @import "./dist-libs/bulma/sass/components/_all.sass";

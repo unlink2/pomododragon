@@ -445,6 +445,7 @@ impl App {
                 <article class="content">
                     <label>
                         <Input
+                            input_class="input is-primary"
                             value={self.work_time_buffer.clone()}
                             oninput={ctx.link().callback(
                                 Msg::UpdateWorkTime)}
@@ -456,6 +457,7 @@ impl App {
                     </label>
                     <label>
                         <Input
+                            input_class="input is-primary"
                             value={self.short_break_time_buffer.clone()}
                             oninput={ctx.link().callback(
                                 Msg::UpdateShortBreakTime)}
@@ -468,6 +470,7 @@ impl App {
 
                     <label>
                         <Input
+                            input_class="input is-primary"
                             value={self.long_break_time_buffer.clone()}
                             oninput={ctx.link().callback(
                                 Msg::UpdateLongBreakTime)}
@@ -480,6 +483,7 @@ impl App {
 
                     <label>
                         <Input
+                            input_class="input is-primary"
                             value={self.until_long_break_buffer.clone()}
                             oninput={ctx.link().callback(
                                 Msg::UpdateUntilLongBreak)}
@@ -490,6 +494,7 @@ impl App {
                     </label>
                     <label>
                         <Input
+                            input_class="input is-primary"
                             value={self.total_cycles_buffer.clone()}
                             oninput={ctx.link().callback(
                                 Msg::UpdateTotalCycles)}

@@ -109,7 +109,7 @@ impl Default for PomoState {
 
 /// A simple state machine
 /// with a timer
-#[derive(Builder, Debug)]
+#[derive(Builder, Debug, Clone)]
 #[builder(setter(into))]
 pub struct SimplePomo<TTask, TTimer>
 where

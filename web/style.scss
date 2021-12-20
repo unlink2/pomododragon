@@ -1,6 +1,11 @@
 @charset "utf-8";
 
 @media (prefers-color-scheme: light) {
+    $primary_brand: #6200ee;
+
+    // bulma global variables
+    $primary: $primary_brand;
+
     @import "./dist-libs/bulma/sass/base/_all.sass";
     @import "./dist-libs/bulma/sass/components/_all.sass";
     @import "./dist-libs/bulma/sass/elements/_all.sass";
