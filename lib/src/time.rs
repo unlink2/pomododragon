@@ -2,7 +2,9 @@ use instant::Instant; // portable instant for native and wasm
 use std::collections::HashMap;
 use std::time::Duration;
 
-pub trait Timer<TError>: Clone {
+pub trait Timer: Clone {
+    type Out;
+
     fn from_goal(goal: Duration) -> Self;
 
     fn default_work_timer() -> Self
@@ -27,10 +29,10 @@ pub trait Timer<TError>: Clone {
     }
 
     /// start the timer
-    fn start(&mut self) -> Result<(), TError>;
+    fn start(&mut self) -> Self::Out;
 
     /// reset is usually the same as start
-    fn reset(&mut self) -> Result<(), TError> {
+    fn reset(&mut self) -> Self::Out {
         self.start()
     }
 
@@ -88,15 +90,16 @@ impl InstantTimer {
     }
 }
 
-impl Timer<()> for InstantTimer {
+impl Timer for InstantTimer {
+    type Out = ();
+
     fn from_goal(goal: Duration) -> Self {
         Self::new(goal)
     }
 
-    fn start(&mut self) -> Result<(), ()> {
+    fn start(&mut self) {
         self.current_goal = self.goal;
         self.start = Some(Instant::now());
-        Ok(())
     }
 
     fn elapsed(&self) -> Option<Duration> {
@@ -211,7 +214,7 @@ mod tests {
         assert_eq!(timer.elapsed(), None);
         assert!(!timer.has_started());
 
-        timer.start().unwrap();
+        timer.start();
         assert!(timer.has_started());
         assert_ne!(timer.elapsed(), None);
 
@@ -223,7 +226,7 @@ mod tests {
     fn it_should_output_percentage() {
         let mut timer = InstantTimer::new(Duration::from_millis(100));
         assert_eq!(timer.percentage(), 0.0);
-        timer.start().unwrap();
+        timer.start();
 
         // we estimate the percentage since it is unclear how long sleep
         // actually takes!
@@ -241,7 +244,7 @@ mod tests {
     #[test]
     fn it_should_pause() {
         let mut timer = InstantTimer::new(Duration::from_millis(100));
-        timer.start().unwrap();
+        timer.start();
         assert!(!timer.is_paused());
         assert!(timer.goal().as_millis() == 100);
         timer.pause();

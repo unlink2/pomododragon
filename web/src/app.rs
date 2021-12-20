@@ -31,7 +31,7 @@ pub enum Msg {
     UpdateLongBreakTime(String),
     UpdateUntilLongBreak(String),
     UpdateTotalCycles(String),
-    PomoMessage(PomoMessage<SimpleTask, ()>),
+    PomoMessage(PomoMessage<SimpleTask>),
     SkipTo(PomoState),
     Error(Error),
     SetTab(TabState),
@@ -106,9 +106,7 @@ impl Component for App {
         let tasks: Vec<String> = LocalStorage::get(TASKS_KEY).unwrap_or_else(|_| vec![]);
         for task in tasks {
             // this usually will not fail!
-            n.pomo
-                .execute(PomoCommand::AddTask(SimpleTask::new(&task)))
-                .expect("AddTaskFailed");
+            n.pomo.execute(PomoCommand::AddTask(SimpleTask::new(&task)));
         }
 
         n
@@ -117,40 +115,26 @@ impl Component for App {
     fn update(&mut self, ctx: &Context<Self>, msg: Self::Message) -> bool {
         match msg {
             Msg::Start => {
-                if self.pomo.start().is_err() {
-                    self.update(ctx, Msg::Error(Error::Start));
-                }
+                self.pomo.start();
                 true
             }
             Msg::Pause => {
-                if self.pomo.pause().is_err() {
-                    self.update(ctx, Msg::Error(Error::Pause));
-                }
+                self.pomo.pause();
                 true
             }
             Msg::Resume => {
-                if self.pomo.unpause().is_err() {
-                    self.update(ctx, Msg::Error(Error::Unpause));
-                }
+                self.pomo.unpause();
                 true
             }
             Msg::Stop => {
-                if self.pomo.reset().is_err() {
-                    self.update(ctx, Msg::Error(Error::Reset));
-                }
+                self.pomo.reset();
                 true
             }
             Msg::Add => {
                 if !self.description_buffer.is_empty() {
-                    if self
-                        .pomo
-                        .execute(PomoCommand::AddTask(SimpleTask::new(
-                            &self.description_buffer,
-                        )))
-                        .is_err()
-                    {
-                        self.update(ctx, Msg::Error(Error::AddTask));
-                    }
+                    self.pomo.execute(PomoCommand::AddTask(SimpleTask::new(
+                        &self.description_buffer,
+                    )));
 
                     self.store_tasks(ctx);
 
@@ -159,9 +143,7 @@ impl Component for App {
                 true
             }
             Msg::Delete(index) => {
-                if self.pomo.execute(PomoCommand::RemoveTask(index)).is_err() {
-                    self.update(ctx, Msg::Error(Error::LocalStorageWrite));
-                }
+                self.pomo.execute(PomoCommand::RemoveTask(index));
                 self.store_tasks(ctx);
                 true
             }
@@ -239,27 +221,23 @@ impl Component for App {
                 true
             }
             Msg::SkipTo(state) => {
-                if self.pomo.skip_to(state).is_err() {
-                    self.update(ctx, Msg::Error(Error::Update));
-                }
+                self.pomo.skip_to(state);
                 true
             }
-            Msg::Tick => match self.pomo.update() {
-                Ok(message) => {
-                    if let Some(timer) = self.pomo.timer() {
-                        self.progress = format!(
-                            "{}",
-                            timer
-                                .elapsed()
-                                .unwrap_or_else(|| Duration::from_secs(0))
-                                .as_secs()
-                        );
-                        self.goal = format!("{}", timer.goal().as_secs());
-                    }
-                    self.update(ctx, Msg::PomoMessage(message))
+            Msg::Tick => {
+                let message = self.pomo.update();
+                if let Some(timer) = self.pomo.timer() {
+                    self.progress = format!(
+                        "{}",
+                        timer
+                            .elapsed()
+                            .unwrap_or_else(|| Duration::from_secs(0))
+                            .as_secs()
+                    );
+                    self.goal = format!("{}", timer.goal().as_secs());
                 }
-                Err(_) => self.update(ctx, Msg::Error(Error::Update)),
-            },
+                self.update(ctx, Msg::PomoMessage(message))
+            }
         }
     }
 

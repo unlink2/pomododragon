@@ -1,5 +1,7 @@
-pub trait Task<TError>: ToString + Clone {
-    fn complete(&mut self) -> Result<(), TError>;
+pub trait Task: ToString + Clone {
+    type Out;
+
+    fn complete(&mut self) -> Self::Out;
     fn is_completed(&self) -> bool;
 }
 
@@ -16,8 +18,10 @@ impl ToString for TaskKind {
     }
 }
 
-impl Task<()> for TaskKind {
-    fn complete(&mut self) -> Result<(), ()> {
+impl Task for TaskKind {
+    type Out = ();
+
+    fn complete(&mut self) -> Self::Out {
         match self {
             Self::Simple(task) => task.complete(),
         }
@@ -51,10 +55,11 @@ impl ToString for SimpleTask {
     }
 }
 
-impl Task<()> for SimpleTask {
-    fn complete(&mut self) -> Result<(), ()> {
+impl Task for SimpleTask {
+    type Out = ();
+
+    fn complete(&mut self) -> Self::Out {
         self.completed = true;
-        Ok(())
     }
 
     fn is_completed(&self) -> bool {
@@ -71,7 +76,7 @@ mod tests {
         let mut task = SimpleTask::new("Tets".into());
         assert!(!task.is_completed());
 
-        task.complete().unwrap();
+        task.complete();
         assert!(task.is_completed());
     }
 }

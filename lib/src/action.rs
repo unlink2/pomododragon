@@ -1,28 +1,24 @@
-use std::marker::PhantomData;
-
 use crate::{PomoState, Task};
 
 #[derive(PartialEq, Eq, Debug)]
-pub struct Transition<TTask, TError>
+pub struct Transition<TTask>
 where
-    TTask: Task<TError>,
+    TTask: Task,
 {
     pub from: PomoState,
     pub to: PomoState,
     pub completed: Option<TTask>,
-    phantom_error: PhantomData<TError>,
 }
 
-impl<TTask, TError> Transition<TTask, TError>
+impl<TTask> Transition<TTask>
 where
-    TTask: Task<TError>,
+    TTask: Task,
 {
     pub fn new(from: PomoState, to: PomoState) -> Self {
         Self {
             from,
             to,
             completed: None,
-            phantom_error: PhantomData::default(),
         }
     }
 
@@ -31,14 +27,13 @@ where
             from,
             to,
             completed: Some(completed),
-            phantom_error: PhantomData::default(),
         }
     }
 }
 
-impl<TTask, TError> std::fmt::Display for Transition<TTask, TError>
+impl<TTask> std::fmt::Display for Transition<TTask>
 where
-    TTask: Task<TError>,
+    TTask: Task,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(
@@ -55,19 +50,19 @@ where
 }
 
 #[derive(PartialEq, Eq, Debug)]
-pub enum PomoMessage<TTask, TError>
+pub enum PomoMessage<TTask>
 where
-    TTask: Task<TError>,
+    TTask: Task,
 {
-    Transition(Transition<TTask, TError>),
+    Transition(Transition<TTask>),
     NoMessage,
     Executed,
     Reset,
 }
 
-impl<TTask, TError> std::fmt::Display for PomoMessage<TTask, TError>
+impl<TTask> std::fmt::Display for PomoMessage<TTask>
 where
-    TTask: Task<TError>,
+    TTask: Task,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(
@@ -84,9 +79,9 @@ where
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
-pub enum PomoCommand<TTask, TError>
+pub enum PomoCommand<TTask>
 where
-    TTask: Task<TError>,
+    TTask: Task,
 {
     AddTask(TTask),
     RemoveTask(usize),
@@ -97,5 +92,4 @@ where
     TogglePause,
     Update,
     Clear,
-    PhantomError(PhantomData<TError>),
 }

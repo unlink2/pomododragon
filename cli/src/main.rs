@@ -61,11 +61,10 @@ fn main() {
         Some(Spinner::new(&Spinners::Dots, "".into()))
     };
 
-    pomo.execute(PomoCommand::Start).expect("Unable to start");
+    pomo.execute(PomoCommand::Start);
 
     while !pomo.is_completed() {
-        pomo.execute(PomoCommand::Update)
-            .expect("Error while processing timer");
+        pomo.execute(PomoCommand::Update);
 
         let message = if pomo.is_paused() {
             "Paused".into()
