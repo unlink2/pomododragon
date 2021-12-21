@@ -10,7 +10,7 @@ pub struct BottomBar;
 
 impl BottomBar {
     pub fn item_class() -> String {
-        return "navbar-item is-expanded is-block has-text-centered".into();
+        "navbar-item is-expanded is-block has-text-centered".into()
     }
 }
 
