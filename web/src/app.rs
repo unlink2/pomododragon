@@ -1,3 +1,4 @@
+use crate::bottombar::BottomBar;
 use crate::error::Error;
 use crate::icon::Icon;
 use crate::input::{Input, InputKind};
@@ -246,25 +247,6 @@ impl Component for App {
             <section class="section">
                 <div class="container is-max-desktop">
                     <div>
-                        <div class="tabs">
-                            <ul>
-                                <li class={self.get_tab_active(TabState::Timer)}>
-                                    <a onclick={ctx.link().callback(|_| Msg::SetTab(TabState::Timer))}>
-                                        { "Tasks" }
-                                    </a>
-                                </li>
-                                <li class={self.get_tab_active(TabState::Tasks)}>
-                                    <a onclick={ctx.link().callback(|_| Msg::SetTab(TabState::Tasks))}>
-                                        { "Tasks" }
-                                    </a>
-                                </li>
-                                <li class={self.get_tab_active(TabState::Settings)}>
-                                    <a onclick={ctx.link().callback(|_| Msg::SetTab(TabState::Settings))}>
-                                        { "Settings" }
-                                    </a>
-                                </li>
-                            </ul>
-                        </div>
                         {
                             match self.state {
                                 TabState::Settings => self.view_settings(ctx),
@@ -272,6 +254,24 @@ impl Component for App {
                                 _ => self.view_timer(ctx)
                             }
                         }
+                        <BottomBar>
+                            <a class={classes!(BottomBar::item_class(), self.get_tab_active(TabState::Timer))}
+                                onclick={ctx.link().callback(|_| Msg::SetTab(TabState::Timer))}>
+                                <Icon class="fas fa-clock" alt={"Timer"}></Icon>
+                                <p>{"Timer"}</p>
+                            </a>
+                            <a class={classes!(BottomBar::item_class(), self.get_tab_active(TabState::Tasks))}
+                               onclick={ctx.link().callback(|_| Msg::SetTab(TabState::Tasks))}>
+                                <Icon class="fas fa-list-alt" alt={"Tasks"}></Icon>
+                                <p>{"Tasks"}</p>
+                            </a>
+                            <a class={classes!(BottomBar::item_class(),
+                                self.get_tab_active(TabState::Settings))}
+                               onclick={ctx.link().callback(|_| Msg::SetTab(TabState::Settings))}>
+                                <Icon class="fas fa-sliders-h" alt={"Settings"}></Icon>
+                                <p>{"Settings"}</p>
+                            </a>
+                        </BottomBar>
                     </div>
                 </div>
             </section>
@@ -311,7 +311,7 @@ impl App {
 
     fn view_timer(&self, ctx: &Context<Self>) -> Html {
         html! {
-            <div class="container box is-primary">
+            <div class="container box is-primary has-text-centered">
                 <div class="">
                     <div class="title">
                         { self.pomo.state() }
@@ -371,7 +371,7 @@ impl App {
             } else {
                 html! {
                     <button
-                        class="button is-primary"
+                        class="button is-info"
                         disabled={ self.pomo.is_paused() }
                         onclick={ctx.link().callback(|_| Msg::Start)}>
                         <Icon class={"fas fa-play fa-align-center"} alt={"Start"}/>

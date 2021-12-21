@@ -1,5 +1,6 @@
 mod about;
 mod app;
+mod bottombar;
 mod error;
 mod footer;
 mod icon;

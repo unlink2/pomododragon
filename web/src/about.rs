@@ -19,9 +19,12 @@ impl Component for About {
     fn view(&self, _ctx: &Context<Self>) -> Html {
         html! {
             <section class="section">
-                <div class="content">
-                    { "About page" }
-                </div>
+              <div class="content has-text-centered">
+                <p>
+                    <strong>{ "Contact: " }</strong>
+                    <a href="mailto:lukas@krickl.dev">{ "lukas@krickl.dev" }</a>
+                </p>
+              </div>
             </section>
         }
     }
